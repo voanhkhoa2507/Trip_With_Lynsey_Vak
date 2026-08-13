@@ -5,7 +5,7 @@ export function renderHome(container) {
   container.innerHTML = `
     <div class="app-header">
       <h1>Lynsey & Vak Trip 😋</h1>
-      <p>Lưu giữ những kỷ niệm đẹp cùng nhau</p>
+      <p>😋😋😋😋😋😋😋</p>
       <div class="import-export-bar mt-16">
         <button class="btn btn-secondary btn-sm" id="btn-import">📥 Nhập dữ liệu</button>
         <button class="btn btn-secondary btn-sm" id="btn-export">📤 Xuất dữ liệu</button>
