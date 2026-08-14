@@ -1,4 +1,4 @@
-import { MediaStore } from './store.js';
+import { MediaStore, subscribeToRealtimeUpdates } from './store.js';
 import { renderHome } from './pages/home.js';
 import { renderTrip } from './pages/trip.js';
 
@@ -128,6 +128,11 @@ window.addEventListener('hashchange', handleRoute);
 async function init() {
   await MediaStore.init();
   handleRoute();
+  
+  // Realtime Cloud Sync Listener
+  subscribeToRealtimeUpdates((type) => {
+    handleRoute();
+  });
 }
 
 if (document.readyState === 'loading') {
