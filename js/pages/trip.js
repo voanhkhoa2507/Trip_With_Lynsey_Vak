@@ -23,10 +23,11 @@ export function renderTrip(container, tripId) {
     return;
   }
 
-  // Ensure arrays exist
+  // Ensure arrays and objects exist
   trip.days = trip.days || [];
   trip.expenses = trip.expenses || [];
   trip.media = trip.media || [];
+  trip.penalties = trip.penalties || { bungTran: 0, cuDau: 0, k: 0 };
 
   clearUrls();
 
@@ -43,6 +44,14 @@ export function renderTrip(container, tripId) {
     TripStore.save(trip);
   }, 500);
 
+  const handlePenaltyChange = debounce((e) => {
+    const key = e.target.getAttribute('data-key');
+    const val = parseInt(e.target.value, 10);
+    trip.penalties = trip.penalties || { bungTran: 0, cuDau: 0, k: 0 };
+    trip.penalties[key] = isNaN(val) ? 0 : val;
+    TripStore.save(trip);
+  }, 300);
+
   container.innerHTML = `
     <div class="page-header flex-between">
       <div style="display:flex; align-items:center; gap:8px;">
@@ -52,9 +61,29 @@ export function renderTrip(container, tripId) {
       <span class="badge badge-primary">${trip.destination || 'N/A'}</span>
     </div>
 
-    <div class="note-card clay-card mb-16">
-      <div class="note-card-header">📝 Ghi chú</div>
-      <textarea class="note-textarea form-textarea" placeholder="Nhập ghi chú của bạn...">${trip.note || ''}</textarea>
+    <div class="notes-penalties-container mb-16">
+      <div class="note-card clay-card">
+        <div class="note-card-header">📝 Ghi chú</div>
+        <textarea class="note-textarea form-textarea" placeholder="Nhập ghi chú của bạn...">${trip.note || ''}</textarea>
+      </div>
+
+      <div class="penalty-card clay-card">
+        <div class="penalty-card-header">⚡ Phạt</div>
+        <div class="penalty-list">
+          <div class="penalty-item">
+            <span class="penalty-label">🖐️ Búng trán</span>
+            <input type="number" min="0" class="penalty-input" data-key="bungTran" value="${trip.penalties?.bungTran ?? 0}">
+          </div>
+          <div class="penalty-item">
+            <span class="penalty-label">👊 Cú đầu</span>
+            <input type="number" min="0" class="penalty-input" data-key="cuDau" value="${trip.penalties?.cuDau ?? 0}">
+          </div>
+          <div class="penalty-item">
+            <span class="penalty-label">💸 K</span>
+            <input type="number" min="0" class="penalty-input" data-key="k" value="${trip.penalties?.k ?? 0}">
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="tab-bar">
@@ -69,6 +98,10 @@ export function renderTrip(container, tripId) {
   `;
 
   container.querySelector('.note-textarea').addEventListener('input', handleNoteChange);
+  container.querySelectorAll('.penalty-input').forEach(input => {
+    input.addEventListener('input', handlePenaltyChange);
+    input.addEventListener('change', handlePenaltyChange);
+  });
 
   const tabs = container.querySelectorAll('.tab-item');
   const contents = {

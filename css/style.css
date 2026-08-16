@@ -717,15 +717,25 @@ body {
   font-weight: 700;
 }
 
-/* Note Card */
+/* Note & Penalty Split Layout */
+.notes-penalties-container {
+  display: grid;
+  grid-template-columns: 7fr 3fr;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: stretch;
+}
+
 .note-card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-clay);
-  padding: 24px;
+  padding: 20px 24px;
   transition: var(--transition);
   border: 1px solid rgba(255,107,157,0.08);
   border-left: 4px solid var(--color-warning);
+  display: flex;
+  flex-direction: column;
 }
 
 .note-card-header {
@@ -734,12 +744,14 @@ body {
   gap: 8px;
   margin-bottom: 12px;
   font-weight: 700;
+  font-size: 1.05rem;
 }
 
 .note-textarea {
   width: 100%;
-  min-height: 80px;
-  padding: 12px;
+  flex: 1;
+  min-height: 140px;
+  padding: 12px 16px;
   border: 2px solid rgba(255,107,157,0.1);
   border-radius: var(--radius-sm);
   font-family: var(--font);
@@ -747,11 +759,86 @@ body {
   background: var(--bg-main);
   box-shadow: var(--shadow-clay-inset);
   font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .note-textarea:focus {
   outline: none;
   border-color: var(--color-warning);
+}
+
+.penalty-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-clay);
+  padding: 20px 24px;
+  transition: var(--transition);
+  border: 1px solid rgba(255,107,157,0.08);
+  border-left: 4px solid var(--color-danger);
+  display: flex;
+  flex-direction: column;
+}
+
+.penalty-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-danger);
+}
+
+.penalty-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.penalty-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--bg-main);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 107, 157, 0.08);
+  transition: var(--transition);
+}
+
+.penalty-item:hover {
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.penalty-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.penalty-input {
+  width: 65px;
+  padding: 6px 8px;
+  border: 2px solid rgba(255, 107, 157, 0.15);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-clay-inset);
+  color: var(--color-danger);
+  transition: var(--transition);
+}
+
+.penalty-input:focus {
+  outline: none;
+  border-color: var(--color-danger);
+  box-shadow: var(--shadow-clay-inset), 0 0 0 3px rgba(239, 68, 68, 0.15);
 }
 
 /* Password */
@@ -945,7 +1032,7 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .trip-grid, .day-grid, .media-grid {
+  .trip-grid, .day-grid, .media-grid, .notes-penalties-container {
     grid-template-columns: 1fr;
   }
   .form-row {
