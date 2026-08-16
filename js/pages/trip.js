@@ -68,10 +68,10 @@ export function renderTrip(container, tripId) {
       </div>
 
       <div class="penalty-card clay-card">
-        <div class="penalty-card-header">⚡ Phạt</div>
+        <div class="penalty-card-header">💞 Phạt</div>
         <div class="penalty-list">
           <div class="penalty-item">
-            <span class="penalty-label">🖐️ Búng trán</span>
+            <span class="penalty-label">🫵 Búng trán</span>
             <input type="number" min="0" class="penalty-input" data-key="bungTran" value="${trip.penalties?.bungTran ?? 0}">
           </div>
           <div class="penalty-item">
@@ -79,7 +79,7 @@ export function renderTrip(container, tripId) {
             <input type="number" min="0" class="penalty-input" data-key="cuDau" value="${trip.penalties?.cuDau ?? 0}">
           </div>
           <div class="penalty-item">
-            <span class="penalty-label">💸 K</span>
+            <span class="penalty-label">😈 K</span>
             <input type="number" min="0" class="penalty-input" data-key="k" value="${trip.penalties?.k ?? 0}">
           </div>
         </div>
