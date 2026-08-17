@@ -184,7 +184,7 @@ export function renderTrip(container, tripId) {
         <div class="polaroid-clothesline-container" style="padding: 10px; min-height: unset; text-align: center;">
           <div class="clothesline-wire" style="top: 50%;"></div>
           <div style="position: relative; z-index: 2; font-size: 0.8rem; color: var(--color-text-secondary); background: var(--bg-card); display: inline-block; padding: 4px 12px; border-radius: 12px; box-shadow: var(--shadow-clay);">
-            ✨ Thêm hoạt động để treo ảnh Polaroid nhé 💕
+            ✨ Treo ảnh Polaroid💕
           </div>
         </div>
       `;
