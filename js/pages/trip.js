@@ -140,16 +140,31 @@ export function renderTrip(container, tripId) {
     let html = '<div class="day-grid">';
 
     trip.days.forEach((day, dayIndex) => {
+      // Tự động sắp xếp hoạt động theo thời gian từ sớm đến muộn (từ trên xuống dưới)
+      if (day.activities && day.activities.length > 0) {
+        day.activities.sort((a, b) => {
+          const timeA = a.time || '';
+          const timeB = b.time || '';
+          if (!timeA && !timeB) return 0;
+          if (!timeA) return 1;
+          if (!timeB) return -1;
+          return timeA.localeCompare(timeB);
+        });
+      }
+
       let activitiesHtml = '';
       (day.activities || []).forEach(act => {
         activitiesHtml += `
           <div class="activity-item">
-            <div class="activity-time">${act.time || ''}</div>
+            <div class="activity-time">${act.time || '--:--'}</div>
             <div class="activity-info">
               <div class="activity-place">${act.place || ''}</div>
               <div class="activity-desc">${act.description || ''}</div>
             </div>
-            <button class="btn-icon btn-sm btn-del-act" data-day="${day.id}" data-act="${act.id}">🗑️</button>
+            <div style="display:flex; gap:4px;">
+              <button class="btn-icon btn-sm btn-edit-act" data-day="${day.id}" data-act="${act.id}">✏️</button>
+              <button class="btn-icon btn-sm btn-del-act" data-day="${day.id}" data-act="${act.id}">🗑️</button>
+            </div>
           </div>
         `;
       });
@@ -203,6 +218,17 @@ export function renderTrip(container, tripId) {
             if (expenseUnlocked) renderExpenses();
           }
         });
+      });
+    });
+    sched.querySelectorAll('.btn-edit-act').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const dayId = btn.getAttribute('data-day');
+        const actId = btn.getAttribute('data-act');
+        const day = trip.days.find(d => d.id === dayId);
+        if (day) {
+          const act = (day.activities || []).find(a => a.id === actId);
+          if (act) openActivityModal(dayId, act);
+        }
       });
     });
     sched.querySelectorAll('.btn-del-act').forEach(btn => {
@@ -478,21 +504,21 @@ export function renderTrip(container, tripId) {
     });
   }
 
-  function openActivityModal(dayId) {
+  function openActivityModal(dayId, existingAct = null) {
     showModal({
-      title: 'Thêm hoạt động',
+      title: existingAct ? 'Sửa hoạt động' : 'Thêm hoạt động',
       contentHTML: `
         <div class="form-group">
           <label class="form-label">Thời gian</label>
-          <input type="time" class="form-input" id="modal-act-time">
+          <input type="time" class="form-input" id="modal-act-time" value="${existingAct ? (existingAct.time || '') : ''}">
         </div>
         <div class="form-group">
           <label class="form-label">Địa điểm</label>
-          <input type="text" class="form-input" id="modal-act-place">
+          <input type="text" class="form-input" id="modal-act-place" value="${existingAct ? (existingAct.place || '') : ''}">
         </div>
         <div class="form-group">
           <label class="form-label">Mô tả</label>
-          <textarea class="form-textarea" id="modal-act-desc"></textarea>
+          <textarea class="form-textarea" id="modal-act-desc">${existingAct ? (existingAct.description || '') : ''}</textarea>
         </div>
       `,
       onConfirm: () => {
@@ -502,10 +528,28 @@ export function renderTrip(container, tripId) {
 
         const day = trip.days.find(d => d.id === dayId);
         if (day) {
-          day.activities.push({
-            id: 'act_' + Date.now(),
-            time, place, description: desc
+          day.activities = day.activities || [];
+          if (existingAct) {
+            existingAct.time = time;
+            existingAct.place = place;
+            existingAct.description = desc;
+          } else {
+            day.activities.push({
+              id: 'act_' + Date.now(),
+              time, place, description: desc
+            });
+          }
+
+          // Tự động sắp xếp hoạt động theo thời gian từ trên xuống
+          day.activities.sort((a, b) => {
+            const timeA = a.time || '';
+            const timeB = b.time || '';
+            if (!timeA && !timeB) return 0;
+            if (!timeA) return 1;
+            if (!timeB) return -1;
+            return timeA.localeCompare(timeB);
           });
+
           TripStore.save(trip);
           hideModal();
           renderSchedule();
