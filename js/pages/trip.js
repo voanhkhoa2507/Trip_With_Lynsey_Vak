@@ -152,18 +152,56 @@ export function renderTrip(container, tripId) {
         });
       }
 
+      // Khung ảnh Polaroid kẹp trên dây treo
+      let polaroidsHtml = '';
+      (day.activities || []).forEach((act, actIndex) => {
+        const rotClass = `polaroid-rot-${actIndex % 6}`;
+        const label = act.place ? act.place : (act.time || 'Ảnh');
+        polaroidsHtml += `
+          <div class="polaroid-item ${rotClass}" data-day="${day.id}" data-act="${act.id}" title="${act.place || 'Hoạt động'} (${act.time || ''})">
+            <div class="polaroid-pin"></div>
+            <div class="polaroid-frame">
+              <div class="polaroid-photo-box" id="pol-${act.id}">
+                <div class="polaroid-placeholder">
+                  <span>📷</span>
+                  <small>${act.time || '+'}</small>
+                </div>
+              </div>
+              <div class="polaroid-caption">${label}</div>
+            </div>
+          </div>
+        `;
+      });
+
+      const clotheslineHtml = (day.activities && day.activities.length > 0) ? `
+        <div class="polaroid-clothesline-container">
+          <div class="clothesline-wire"></div>
+          <div class="polaroid-gallery">
+            ${polaroidsHtml}
+          </div>
+        </div>
+      ` : `
+        <div class="polaroid-clothesline-container" style="padding: 10px; min-height: unset; text-align: center;">
+          <div class="clothesline-wire" style="top: 50%;"></div>
+          <div style="position: relative; z-index: 2; font-size: 0.8rem; color: var(--color-text-secondary); background: var(--bg-card); display: inline-block; padding: 4px 12px; border-radius: 12px; box-shadow: var(--shadow-clay);">
+            ✨ Thêm hoạt động để treo ảnh Polaroid nhé 💕
+          </div>
+        </div>
+      `;
+
       let activitiesHtml = '';
       (day.activities || []).forEach(act => {
         activitiesHtml += `
           <div class="activity-item">
+            <img id="act-thumb-${act.id}" class="activity-thumb" style="display:none;" />
             <div class="activity-time">${act.time || '--:--'}</div>
             <div class="activity-info">
               <div class="activity-place">${act.place || ''}</div>
               <div class="activity-desc">${act.description || ''}</div>
             </div>
             <div style="display:flex; gap:4px;">
-              <button class="btn-icon btn-sm btn-edit-act" data-day="${day.id}" data-act="${act.id}">✏️</button>
-              <button class="btn-icon btn-sm btn-del-act" data-day="${day.id}" data-act="${act.id}">🗑️</button>
+              <button class="btn-icon btn-sm btn-edit-act" data-day="${day.id}" data-act="${act.id}" title="Sửa hoạt động & ảnh">✏️</button>
+              <button class="btn-icon btn-sm btn-del-act" data-day="${day.id}" data-act="${act.id}" title="Xóa hoạt động">🗑️</button>
             </div>
           </div>
         `;
@@ -181,6 +219,7 @@ export function renderTrip(container, tripId) {
               <button class="btn-icon btn-sm btn-del-day" data-id="${day.id}">🗑️</button>
             </div>
           </div>
+          ${clotheslineHtml}
           <div class="activity-list">
             ${activitiesHtml}
             <button class="add-activity-btn btn-sm btn-secondary mt-16" data-day="${day.id}">+ Thêm hoạt động</button>
@@ -195,6 +234,29 @@ export function renderTrip(container, tripId) {
       </div>
     </div>`;
     sched.innerHTML = html;
+
+    // Asynchronously load polaroid photos and thumbnails
+    trip.days.forEach(day => {
+      (day.activities || []).forEach(act => {
+        if (act.photoKey) {
+          MediaStore.get(act.photoKey).then(blob => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              objectUrls.push(url);
+              const polBox = sched.querySelector(`#pol-${act.id}`);
+              if (polBox) {
+                polBox.innerHTML = `<img src="${url}" alt="${act.place || ''}" />`;
+              }
+              const thumbBox = sched.querySelector(`#act-thumb-${act.id}`);
+              if (thumbBox) {
+                thumbBox.src = url;
+                thumbBox.style.display = 'block';
+              }
+            }
+          });
+        }
+      });
+    });
 
     // Events
     sched.querySelector('#btn-add-day')?.addEventListener('click', () => openDayModal());
@@ -241,6 +303,47 @@ export function renderTrip(container, tripId) {
           TripStore.save(trip);
           renderSchedule();
         }
+      });
+    });
+    sched.querySelectorAll('.polaroid-item, .activity-thumb').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const dayId = item.getAttribute('data-day') || item.closest('.activity-item')?.querySelector('.btn-edit-act')?.getAttribute('data-day');
+        const actId = item.getAttribute('data-act') || item.closest('.activity-item')?.querySelector('.btn-edit-act')?.getAttribute('data-act');
+        if (!dayId || !actId) return;
+
+        const day = trip.days.find(d => d.id === dayId);
+        if (!day) return;
+        const act = (day.activities || []).find(a => a.id === actId);
+        if (!act) return;
+
+        if (act.photoKey) {
+          const blob = await MediaStore.get(act.photoKey);
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            objectUrls.push(url);
+            showModal({
+              title: act.place || 'Khoảnh khắc Polaroid 💕',
+              contentHTML: `
+                <div style="text-align: center;">
+                  <img src="${url}" style="max-width: 100%; max-height: 60vh; border-radius: var(--radius-md); box-shadow: var(--shadow-clay); object-fit: contain;" />
+                  <div style="margin-top: 14px; font-weight: 700; font-size: 1.1rem; color: var(--color-primary);">${act.place || ''}</div>
+                  ${act.time ? `<div style="margin-top: 4px; font-weight: 600; color: var(--color-secondary);">⏰ ${act.time}</div>` : ''}
+                  ${act.description ? `<p style="margin-top: 8px; font-size: 0.9rem; color: var(--color-text-secondary);">${act.description}</p>` : ''}
+                </div>
+              `,
+              confirmText: '✏️ Chỉnh sửa',
+              onConfirm: () => {
+                hideModal();
+                openActivityModal(dayId, act);
+              }
+            });
+            return;
+          }
+        }
+
+        // Chưa có ảnh -> mở modal thêm ảnh
+        openActivityModal(dayId, act);
       });
     });
     sched.querySelectorAll('.add-activity-btn').forEach(btn => {
@@ -504,9 +607,12 @@ export function renderTrip(container, tripId) {
     });
   }
 
-  function openActivityModal(dayId, existingAct = null) {
+  async function openActivityModal(dayId, existingAct = null) {
+    let selectedFile = null;
+    let removeExistingPhoto = false;
+
     showModal({
-      title: existingAct ? 'Sửa hoạt động' : 'Thêm hoạt động',
+      title: existingAct ? 'Sửa hoạt động & Ảnh Polaroid' : 'Thêm hoạt động & Ảnh Polaroid',
       contentHTML: `
         <div class="form-group">
           <label class="form-label">Thời gian</label>
@@ -514,30 +620,70 @@ export function renderTrip(container, tripId) {
         </div>
         <div class="form-group">
           <label class="form-label">Địa điểm</label>
-          <input type="text" class="form-input" id="modal-act-place" value="${existingAct ? (existingAct.place || '') : ''}">
+          <input type="text" class="form-input" id="modal-act-place" value="${existingAct ? (existingAct.place || '') : ''}" placeholder="vd: Bánh xèo, Quán cà phê...">
         </div>
         <div class="form-group">
           <label class="form-label">Mô tả</label>
-          <textarea class="form-textarea" id="modal-act-desc">${existingAct ? (existingAct.description || '') : ''}</textarea>
+          <textarea class="form-textarea" id="modal-act-desc" placeholder="Ghi chú chi tiết...">${existingAct ? (existingAct.description || '') : ''}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">📸 Ảnh kỷ niệm Polaroid</label>
+          <div class="act-photo-preview-container">
+            <div class="act-photo-preview" id="modal-act-preview-box" title="Nhấn để chọn ảnh">
+              <span id="modal-act-placeholder-text" style="font-size:0.8rem; font-weight:600; color:var(--color-primary); text-align:center; padding:4px;">📷 Thêm ảnh</span>
+              <img id="modal-act-img-element" style="display:none;" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <button type="button" class="btn btn-sm btn-secondary" id="modal-act-upload-btn">📁 Chọn ảnh từ máy</button>
+              <button type="button" class="btn btn-sm btn-danger" id="modal-act-remove-btn" style="display:none;">🗑️ Xóa ảnh</button>
+              <input type="file" id="modal-act-file-input" accept="image/*" style="display:none;" />
+            </div>
+          </div>
         </div>
       `,
-      onConfirm: () => {
+      onConfirm: async () => {
         const time = document.getElementById('modal-act-time').value;
         const place = document.getElementById('modal-act-place').value;
         const desc = document.getElementById('modal-act-desc').value;
 
+        if (!place.trim() && !time) {
+          return showToast('Vui lòng nhập địa điểm hoặc thời gian', 'error');
+        }
+
         const day = trip.days.find(d => d.id === dayId);
         if (day) {
           day.activities = day.activities || [];
-          if (existingAct) {
-            existingAct.time = time;
-            existingAct.place = place;
-            existingAct.description = desc;
-          } else {
-            day.activities.push({
+          let act = existingAct;
+          if (!act) {
+            act = {
               id: 'act_' + Date.now(),
               time, place, description: desc
-            });
+            };
+            day.activities.push(act);
+          } else {
+            act.time = time;
+            act.place = place;
+            act.description = desc;
+          }
+
+          // Xử lý lưu hoặc xóa ảnh
+          if (selectedFile) {
+            const mediaKey = `blob_${trip.id}_${act.id}_${Date.now()}`;
+            try {
+              await MediaStore.save(mediaKey, selectedFile);
+              if (act.photoKey && act.photoKey !== mediaKey) {
+                await MediaStore.delete(act.photoKey);
+              }
+              act.photoKey = mediaKey;
+            } catch (err) {
+              console.error('Lỗi lưu ảnh:', err);
+              showToast('Lỗi khi tải ảnh lên', 'error');
+            }
+          } else if (removeExistingPhoto) {
+            if (act.photoKey) {
+              await MediaStore.delete(act.photoKey);
+              delete act.photoKey;
+            }
           }
 
           // Tự động sắp xếp hoạt động theo thời gian từ trên xuống
@@ -553,9 +699,69 @@ export function renderTrip(container, tripId) {
           TripStore.save(trip);
           hideModal();
           renderSchedule();
+          showToast(existingAct ? 'Đã cập nhật hoạt động' : 'Đã thêm hoạt động mới');
         }
       }
     });
+
+    // Thiết lập tương tác trong Modal chọn ảnh
+    const previewBox = document.getElementById('modal-act-preview-box');
+    const placeholderText = document.getElementById('modal-act-placeholder-text');
+    const imgEl = document.getElementById('modal-act-img-element');
+    const uploadBtn = document.getElementById('modal-act-upload-btn');
+    const removeBtn = document.getElementById('modal-act-remove-btn');
+    const fileInput = document.getElementById('modal-act-file-input');
+
+    const updatePreview = (src) => {
+      if (src) {
+        imgEl.src = src;
+        imgEl.style.display = 'block';
+        placeholderText.style.display = 'none';
+        removeBtn.style.display = 'inline-flex';
+      } else {
+        imgEl.src = '';
+        imgEl.style.display = 'none';
+        placeholderText.style.display = 'block';
+        removeBtn.style.display = 'none';
+      }
+    };
+
+    // Nếu hoạt động đã có ảnh, tải ảnh lên preview
+    if (existingAct && existingAct.photoKey) {
+      try {
+        const blob = await MediaStore.get(existingAct.photoKey);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          objectUrls.push(url);
+          updatePreview(url);
+        }
+      } catch (e) {
+        console.error('Không thể tải ảnh hoạt động cũ', e);
+      }
+    }
+
+    if (uploadBtn && fileInput && previewBox) {
+      uploadBtn.addEventListener('click', () => fileInput.click());
+      previewBox.addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          selectedFile = file;
+          removeExistingPhoto = false;
+          const url = URL.createObjectURL(file);
+          objectUrls.push(url);
+          updatePreview(url);
+        }
+      });
+
+      removeBtn.addEventListener('click', () => {
+        selectedFile = null;
+        removeExistingPhoto = true;
+        fileInput.value = '';
+        updatePreview(null);
+      });
+    }
   }
 
   function openExpenseModal(dayId) {
