@@ -27,7 +27,10 @@ export function renderTrip(container, tripId) {
   trip.days = trip.days || [];
   trip.expenses = trip.expenses || [];
   trip.media = trip.media || [];
-  trip.penalties = trip.penalties || { bungTran: 0, cuDau: 0, k: 0 };
+  trip.penalties = trip.penalties || { bungTran: 0, troiTay: 0, k: 0 };
+  if (trip.penalties.troiTay === undefined && trip.penalties.cuDau !== undefined) {
+    trip.penalties.troiTay = trip.penalties.cuDau;
+  }
 
   clearUrls();
 
@@ -47,7 +50,7 @@ export function renderTrip(container, tripId) {
   const handlePenaltyChange = debounce((e) => {
     const key = e.target.getAttribute('data-key');
     const val = parseInt(e.target.value, 10);
-    trip.penalties = trip.penalties || { bungTran: 0, cuDau: 0, k: 0 };
+    trip.penalties = trip.penalties || { bungTran: 0, troiTay: 0, k: 0 };
     trip.penalties[key] = isNaN(val) ? 0 : val;
     TripStore.save(trip);
   }, 300);
@@ -68,18 +71,18 @@ export function renderTrip(container, tripId) {
       </div>
 
       <div class="penalty-card clay-card">
-        <div class="penalty-card-header">💞 Phạt</div>
+        <div class="penalty-card-header">⚡ Phạt</div>
         <div class="penalty-list">
           <div class="penalty-item">
-            <span class="penalty-label">🫵 Búng trán</span>
+            <span class="penalty-label">🖐️ Búng trán</span>
             <input type="number" min="0" class="penalty-input" data-key="bungTran" value="${trip.penalties?.bungTran ?? 0}">
           </div>
           <div class="penalty-item">
-            <span class="penalty-label">👊 Cú đầu</span>
-            <input type="number" min="0" class="penalty-input" data-key="cuDau" value="${trip.penalties?.cuDau ?? 0}">
+            <span class="penalty-label">🔗 Trói tay</span>
+            <input type="number" min="0" class="penalty-input" data-key="troiTay" value="${trip.penalties?.troiTay ?? trip.penalties?.cuDau ?? 0}">
           </div>
           <div class="penalty-item">
-            <span class="penalty-label">😈 K</span>
+            <span class="penalty-label">💸 K</span>
             <input type="number" min="0" class="penalty-input" data-key="k" value="${trip.penalties?.k ?? 0}">
           </div>
         </div>
