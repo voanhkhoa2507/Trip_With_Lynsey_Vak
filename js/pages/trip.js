@@ -82,7 +82,7 @@ export function renderTrip(container, tripId) {
             <input type="number" min="0" class="penalty-input" data-key="troiTay" value="${trip.penalties?.troiTay ?? trip.penalties?.cuDau ?? 0}">
           </div>
           <div class="penalty-item">
-            <span class="penalty-label">💸 K</span>
+            <span class="penalty-label">❓ K</span>
             <input type="number" min="0" class="penalty-input" data-key="k" value="${trip.penalties?.k ?? 0}">
           </div>
         </div>
