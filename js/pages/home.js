@@ -254,7 +254,7 @@ export function renderHome(container) {
       <div class="map-summary-card slide-up">
         <h2 style="font-size: 1.4rem; color: var(--color-primary); margin-bottom: 6px;">🗺️ Scratch Map</h2>
         <p style="color: var(--color-text-secondary); font-size: 0.95rem;">
-          Đã cùng nhau đi qua <strong>${visitedCount}/${totalCount}</strong> tỉnh thành Việt Nam 🇻🇳
+          Đã đi <strong>${visitedCount}/${totalCount}</strong> tỉnh thành Việt Nam 🇻🇳
         </p>
         <div class="map-progress-bar-container">
           <div class="map-progress-fill" style="width: ${percentage}%;"></div>
