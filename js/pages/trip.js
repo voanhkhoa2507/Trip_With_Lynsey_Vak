@@ -859,16 +859,16 @@ function openBoardingPassModal(trip) {
             </div>
             <div class="bp-item">
               <label>GHẾ NGỒI</label>
-              <span style="color:var(--color-primary);">Cạnh Nhau 💕</span>
+              <span style="color:var(--color-primary);"></span>
             </div>
             <div class="bp-item">
               <label>CỬA RA (GATE)</label>
-              <span style="color:var(--color-secondary);">Trái Tim 💕</span>
+              <span style="color:var(--color-secondary);"></span>
             </div>
           </div>
           <div class="bp-barcode-section">
             <div class="bp-barcode">||| | |||| | || |||| | |||</div>
-            <div class="bp-footer-quote">"Cùng em đi khắp thế gian 💕"</div>
+            <div class="bp-footer-quote">""</div>
           </div>
         </div>
 
@@ -970,8 +970,8 @@ function downloadBoardingPassAsCanvas(trip) {
 
   drawField('HÀNH KHÁCH', 'Lynsey & Vak 💕', 48, 320);
   drawField('NGÀY BAY', startDate, 340, 320);
-  drawField('GHẾ NGỒI', 'Cạnh Nhau 💕', 48, 410, '#FF6B9D');
-  drawField('CỬA RA (GATE)', 'Trái Tim 💕', 340, 410, '#C084FC');
+  drawField('GHẾ NGỒI', '', 48, 410, '#FF6B9D');
+  drawField('CỬA RA (GATE)', '', 340, 410, '#C084FC');
   drawField('GIỜ LÊN MÁY BAY', 'Trọn Đời ✨', 48, 500);
   drawField('HẠNG VÉ', 'Hạnh Phúc Nhất 💖', 340, 500);
 

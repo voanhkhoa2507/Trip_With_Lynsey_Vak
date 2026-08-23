@@ -524,7 +524,7 @@ Script.complete();`;
           <input type="text" class="form-input" id="setting-title" value="${s.coupleTitle || 'Lynsey & Vak 💕'}">
         </div>
         <div class="form-group">
-          <label class="form-label">Ngày bắt đầu yêu / Kỷ niệm</label>
+          <label class="form-label">Ngày bắt đầu</label>
           <input type="date" class="form-input" id="setting-anni-date" value="${s.anniversaryDate || '2024-01-01'}">
         </div>
         <div class="form-row">
