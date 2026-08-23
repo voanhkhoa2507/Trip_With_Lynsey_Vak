@@ -19,7 +19,7 @@ export function renderHome(container) {
   const upcomingTrips = trips
     .filter(t => t.startDate && t.startDate >= todayStr)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
-  
+
   let countdownText = 'Sẵn sàng cho chuyến đi mới ✨';
   let countdownSub = 'Chưa có lịch trình sắp tới';
   if (upcomingTrips.length > 0) {
@@ -33,7 +33,7 @@ export function renderHome(container) {
   container.innerHTML = `
     <div class="app-header">
       <h1>${settings.coupleTitle || 'Lynsey & Vak Trip 😋'}</h1>
-      <p>💕 Lưu giữ mọi hành trình và khoảnh khắc yêu thương 💕</p>
+      <p></p>
       
       <div class="import-export-bar mt-16">
         <button class="btn btn-secondary btn-sm" id="btn-import">📥 Nhập dữ liệu</button>
@@ -47,7 +47,7 @@ export function renderHome(container) {
       <div class="love-card">
         <div class="love-card-icon">💖</div>
         <div class="love-card-body">
-          <div class="love-card-title">BÊN NHAU ĐƯỢC</div>
+          <div class="love-card-title">Love days</div>
           <div class="love-card-val">${loveDays} <small>ngày</small></div>
           <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-top:2px;">Kỷ niệm: ${formatDate(settings.anniversaryDate)}</div>
         </div>
@@ -606,7 +606,7 @@ Script.complete();`;
           photoKey = `blob_cap_${capsuleId}_${Date.now()}`;
           try {
             await MediaStore.save(photoKey, photoInput.files[0]);
-          } catch (e) {}
+          } catch (e) { }
         }
 
         const newCapsule = {
