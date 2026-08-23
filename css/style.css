@@ -1479,7 +1479,7 @@ body {
   white-space: nowrap;
 }
 
-/* Time Capsule (Hộp thư thời gian) */
+/* Time Capsule (Thư) */
 .capsule-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

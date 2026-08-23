@@ -56,11 +56,11 @@ export const SettingsStore = {
   _saveLocal(settings) {
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-    } catch (e) {}
+    } catch (e) { }
   }
 };
 
-// --- TimeCapsuleStore (Hộp thư thời gian bí mật) ---
+// --- TimeCapsuleStore (Thư bí mật) ---
 export const TimeCapsuleStore = {
   getAll() {
     return this._load();
@@ -112,7 +112,7 @@ export const TimeCapsuleStore = {
   _save(list) {
     try {
       localStorage.setItem(CAPSULES_STORAGE_KEY, JSON.stringify(list));
-    } catch (e) {}
+    } catch (e) { }
   }
 };
 
@@ -183,20 +183,20 @@ let dbInstance = null;
 export const MediaStore = {
   async init() {
     if (dbInstance) return;
-    
+
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
-      
+
       request.onerror = (event) => {
         console.error('IndexedDB error:', event.target.error);
         reject(event.target.error);
       };
-      
+
       request.onsuccess = (event) => {
         dbInstance = event.target.result;
         resolve();
       };
-      
+
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -208,7 +208,7 @@ export const MediaStore = {
 
   async save(key, blob) {
     await this.init();
-    
+
     // Save to IndexedDB locally
     await new Promise((resolve, reject) => {
       const transaction = dbInstance.transaction([STORE_NAME], 'readwrite');
@@ -239,7 +239,7 @@ export const MediaStore = {
       const transaction = dbInstance.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(key);
-      
+
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => reject(request.error);
     });
@@ -251,7 +251,7 @@ export const MediaStore = {
       const transaction = dbInstance.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.delete(key);
-      
+
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
@@ -269,7 +269,7 @@ export const MediaStore = {
       const transaction = dbInstance.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.getAllKeys();
-      
+
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -401,7 +401,7 @@ const blobToBase64 = (blob) => {
 const base64ToBlob = (base64, type) => {
   const byteCharacters = atob(base64);
   const byteArrays = [];
-  
+
   for (let offset = 0; offset < byteCharacters.length; offset += 512) {
     const slice = byteCharacters.slice(offset, offset + 512);
     const byteNumbers = new Array(slice.length);
@@ -411,7 +411,7 @@ const base64ToBlob = (base64, type) => {
     const byteArray = new Uint8Array(byteNumbers);
     byteArrays.push(byteArray);
   }
-  
+
   return new Blob(byteArrays, { type: type || 'image/jpeg' });
 };
 
@@ -491,7 +491,7 @@ export const VIETNAM_PROVINCES = [
 export function getVisitedStats(trips) {
   const settings = SettingsStore.get();
   const custom = settings.customVisitedProvinces || [];
-  
+
   const visitedMap = {}; // { provinceId: count }
 
   // Scan trips destination
@@ -555,11 +555,11 @@ export async function exportAllData() {
 export async function importAllData(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
     reader.onload = async (e) => {
       try {
         const importObject = JSON.parse(e.target.result);
-        
+
         if (!importObject.trips || !importObject.media) {
           throw new Error('Invalid backup file format.');
         }
@@ -593,7 +593,7 @@ export async function importAllData(file) {
         reject(err);
       }
     };
-    
+
     reader.onerror = () => reject(new Error('Failed to read backup file.'));
     reader.readAsText(file);
   });

@@ -252,7 +252,7 @@ export function renderHome(container) {
 
     target.innerHTML = `
       <div class="map-summary-card slide-up">
-        <h2 style="font-size: 1.4rem; color: var(--color-primary); margin-bottom: 6px;">🗺️ Bản Đồ Dấu Chân Của Chúng Mình</h2>
+        <h2 style="font-size: 1.4rem; color: var(--color-primary); margin-bottom: 6px;">🗺️ Scratch Map</h2>
         <p style="color: var(--color-text-secondary); font-size: 0.95rem;">
           Đã cùng nhau đi qua <strong>${visitedCount}/${totalCount}</strong> tỉnh thành Việt Nam 🇻🇳
         </p>
@@ -307,7 +307,7 @@ export function renderHome(container) {
     target.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
         <div>
-          <h2 style="font-size:1.3rem; color:var(--color-primary); font-weight:700;">💌 Hộp Thư Thời Gian Bí Mật</h2>
+          <h2 style="font-size:1.3rem; color:var(--color-primary); font-weight:700;">💌 Thư Bí Mật</h2>
           <p style="color:var(--color-text-secondary); font-size:0.88rem;">Viết lời nhắn hẹn giờ mở khóa cho đối phương</p>
         </div>
         <button class="btn btn-primary btn-sm" id="btn-add-capsule">+ Tạo thư mới</button>
@@ -323,8 +323,8 @@ export function renderHome(container) {
       grid.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1;">
           <div class="empty-state-icon">💌</div>
-          <h3 class="empty-state-title">Chưa có hộp thư thời gian nào</h3>
-          <p class="empty-state-text">Hãy tạo bất ngờ cho người ấy bằng một lời nhắn hẹn giờ mở khóa nhé!</p>
+          <h3 class="empty-state-title">Chưa có Thư nào</h3>
+          <p class="empty-state-text"></p>
           <button class="btn btn-primary mt-16" id="btn-add-first-capsule">+ Tạo thư mới ngay</button>
         </div>
       `;
@@ -562,7 +562,7 @@ Script.complete();`;
     let selectedFile = null;
 
     showModal({
-      title: '💌 Tạo Hộp Thư Thời Gian Mới',
+      title: '💌 Tạo Thư Mới',
       contentHTML: `
         <div class="form-group">
           <label class="form-label">Người gửi</label>
@@ -622,7 +622,7 @@ Script.complete();`;
         await TimeCapsuleStore.save(newCapsule);
         hideModal();
         renderHome(container);
-        showToast('Đã cất giữ hộp thư thời gian bí mật! 🔒✨');
+        showToast('Đã cất giữ Thư bí mật! 🔒✨');
       }
     });
   }
