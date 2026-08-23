@@ -3,14 +3,14 @@
 // icon-color: pink; icon-glyph: camera-retro;
 
 /**
- * 💕 Polaroid Memories & Love Days Widget for Scriptable (iOS)
+ * 💕 Polaroid Memories, Love Days & Trip Countdown Widget
  * Dành cho ứng dụng "Trip With Lynsey & Vak"
  * 
  * Hướng dẫn cài đặt trên iPhone:
  * 1. Tải app "Scriptable" miễn phí từ App Store.
  * 2. Mở Scriptable, bấm dấu [+] ở góc trên bên phải để tạo Script mới.
  * 3. Dán toàn bộ nội dung file này vào và đổi tên Script thành "Polaroid Lynsey & Vak".
- * 4. Ra màn hình chính iPhone, giữ màn hình -> bấm dấu [+] góc trên -> tìm widget "Scriptable" -> chọn kích thước Medium hoặc Large -> chọn Script vừa tạo.
+ * 4. Ra màn hình chính iPhone, giữ màn hình -> bấm dấu [+] góc trên -> tìm widget "Scriptable" -> chọn kích thước Medium (Khuyên dùng) hoặc Small -> chọn Script vừa tạo.
  */
 
 const FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects/trip-lynsey-vak/databases/(default)/documents";
@@ -20,17 +20,17 @@ const FIRESTORE_TRIPS_URL = `${FIRESTORE_BASE}/trips`;
 const WEB_URL = "https://voanhkhoa2507.github.io/Trip_With_Lynsey_Vak/";
 
 async function createWidget() {
+  const family = config.widgetFamily || "medium";
   const widget = new ListWidget();
   widget.backgroundColor = new Color("#F0F9FF");
   widget.url = WEB_URL;
   widget.setPadding(8, 8, 8, 8);
 
-  // Outer Polaroid container
+  // Outer Card
   const polaroid = widget.addStack();
-  polaroid.layoutVertically();
   polaroid.backgroundColor = new Color("#FFFFFF");
   polaroid.cornerRadius = 16;
-  polaroid.setPadding(8, 10, 8, 10);
+  polaroid.setPadding(10, 10, 10, 10);
   polaroid.borderColor = new Color("#FFE4EE");
   polaroid.borderWidth = 1;
 
@@ -103,75 +103,175 @@ async function createWidget() {
     console.error("Fetch trips error: " + e);
   }
 
-  // --- HEADER: 2 CORNER BADGES (Love Days + Trip Countdown) ---
-  const headerStack = polaroid.addStack();
-  headerStack.layoutHorizontally();
+  // --- LAYOUT RENDERING BY WIDGET FAMILY ---
 
-  // Left badge: Love Days
-  const loveBadge = headerStack.addStack();
-  loveBadge.backgroundColor = new Color("#FFE4EE");
-  loveBadge.cornerRadius = 8;
-  loveBadge.setPadding(3, 8, 3, 8);
-  const loveText = loveBadge.addText(`💖 ${loveDays} ngày`);
-  loveText.font = Font.boldSystemFont(10);
-  loveText.textColor = new Color("#FF4785");
+  if (family === "medium" || (!config.runsInWidget && !family)) {
+    // === MEDIUM WIDGET (Horizontal Split: Left Photo, Right Cards) ===
+    polaroid.layoutHorizontally();
+    polaroid.centerAlignContent();
 
-  headerStack.addSpacer();
+    // Left: Photo
+    const photoBox = polaroid.addStack();
+    photoBox.backgroundColor = new Color("#F8FAFC");
+    photoBox.cornerRadius = 12;
+    photoBox.setPadding(4, 4, 4, 4);
+    photoBox.borderColor = new Color("#F1F5F9");
+    photoBox.borderWidth = 1;
 
-  // Right badge: Countdown to next trip
-  const tripBadge = headerStack.addStack();
-  tripBadge.backgroundColor = new Color("#E0F2FE");
-  tripBadge.cornerRadius = 8;
-  tripBadge.setPadding(3, 8, 3, 8);
+    if (img) {
+      const wImg = photoBox.addImage(img);
+      wImg.imageSize = new Size(130, 118);
+      wImg.applyFillingContentMode();
+      wImg.cornerRadius = 9;
+    } else {
+      photoBox.size = new Size(130, 118);
+      photoBox.layoutVertically();
+      photoBox.addSpacer();
+      const fb = photoBox.addText("📸 Kỷ niệm\nLynsey & Vak");
+      fb.font = Font.boldSystemFont(11);
+      fb.textColor = new Color("#94A3B8");
+      fb.centerAlignText();
+      photoBox.addSpacer();
+    }
 
-  let rightBadgeLabel = "✨ Bên nhau";
-  if (upcomingDaysLeft !== null) {
-    rightBadgeLabel = `✈️ Còn ${upcomingDaysLeft} ngày`;
-  }
-  const tripText = tripBadge.addText(rightBadgeLabel);
-  tripText.font = Font.boldSystemFont(10);
-  tripText.textColor = new Color("#0284C7");
+    polaroid.addSpacer(12);
 
-  polaroid.addSpacer(5);
+    // Right: Info Stack
+    const infoStack = polaroid.addStack();
+    infoStack.layoutVertically();
 
-  // --- MIDDLE: PHOTO BOX ---
-  const photoStack = polaroid.addStack();
-  photoStack.cornerRadius = 10;
-  photoStack.borderColor = new Color("#F1F5F9");
-  photoStack.borderWidth = 1;
+    // 1. Love Days Card
+    const loveCard = infoStack.addStack();
+    loveCard.backgroundColor = new Color("#FFF0F5");
+    loveCard.cornerRadius = 10;
+    loveCard.setPadding(6, 10, 6, 10);
+    loveCard.layoutVertically();
+    loveCard.borderColor = new Color("#FFE4EE");
+    loveCard.borderWidth = 1;
 
-  if (img) {
-    const wImg = photoStack.addImage(img);
-    wImg.applyFillingContentMode();
-    wImg.cornerRadius = 10;
+    const lTitle = loveCard.addText("💖 BÊN NHAU ĐƯỢC");
+    lTitle.font = Font.boldSystemFont(9);
+    lTitle.textColor = new Color("#FF6B9D");
+
+    const lVal = loveCard.addText(`${loveDays} ngày 💕`);
+    lVal.font = Font.heavySystemFont(15);
+    lVal.textColor = new Color("#FF4785");
+
+    infoStack.addSpacer(8);
+
+    // 2. Upcoming Trip Card
+    const tripCard = infoStack.addStack();
+    tripCard.backgroundColor = new Color("#F0F9FF");
+    tripCard.cornerRadius = 10;
+    tripCard.setPadding(6, 10, 6, 10);
+    tripCard.layoutVertically();
+    tripCard.borderColor = new Color("#E0F2FE");
+    tripCard.borderWidth = 1;
+
+    const tTitle = tripCard.addText(upcomingTripName ? `✈️ ${upcomingTripName.toUpperCase()}` : "✈️ CHUYẾN ĐI TIẾP THEO");
+    tTitle.font = Font.boldSystemFont(9);
+    tTitle.textColor = new Color("#0284C7");
+    tTitle.lineLimit = 1;
+
+    const tVal = tripCard.addText(upcomingDaysLeft !== null ? `Còn ${upcomingDaysLeft} ngày nữa ✨` : "Sẵn sàng lên đường! ✨");
+    tVal.font = Font.heavySystemFont(13);
+    tVal.textColor = new Color("#0369A1");
+
+  } else if (family === "small") {
+    // === SMALL WIDGET (Square 1x1) ===
+    polaroid.layoutVertically();
+
+    const topRow = polaroid.addStack();
+    topRow.layoutHorizontally();
+
+    const b1 = topRow.addStack();
+    b1.backgroundColor = new Color("#FFE4EE");
+    b1.cornerRadius = 6;
+    b1.setPadding(2, 5, 2, 5);
+    const t1 = b1.addText(`💖 ${loveDays}d`);
+    t1.font = Font.boldSystemFont(9);
+    t1.textColor = new Color("#FF4785");
+
+    topRow.addSpacer();
+
+    const b2 = topRow.addStack();
+    b2.backgroundColor = new Color("#E0F2FE");
+    b2.cornerRadius = 6;
+    b2.setPadding(2, 5, 2, 5);
+    const t2 = b2.addText(upcomingDaysLeft !== null ? `✈️ ${upcomingDaysLeft}d` : `✨ Vak`);
+    t2.font = Font.boldSystemFont(9);
+    t2.textColor = new Color("#0284C7");
+
+    polaroid.addSpacer(5);
+
+    if (img) {
+      const wImg = polaroid.addImage(img);
+      wImg.imageSize = new Size(130, 80);
+      wImg.applyFillingContentMode();
+      wImg.cornerRadius = 8;
+    } else {
+      const fb = polaroid.addText("📸 Kỷ niệm");
+      fb.font = Font.systemFont(11);
+      fb.textColor = new Color("#94A3B8");
+    }
+
+    polaroid.addSpacer(5);
+
+    const foot = polaroid.addStack();
+    foot.addSpacer();
+    const footText = foot.addText(upcomingTripName ? `✈️ ${upcomingTripName}` : "Lynsey & Vak 💕");
+    footText.font = Font.boldSystemFont(10);
+    footText.textColor = new Color("#FF6B9D");
+    footText.lineLimit = 1;
+    foot.addSpacer();
+
   } else {
-    const fallbackText = photoStack.addText("📸 Kỷ niệm của hai bạn\n(Chạm để vào web)");
-    fallbackText.font = Font.systemFont(11);
-    fallbackText.textColor = new Color("#94A3B8");
-    fallbackText.centerAlignText();
+    // === LARGE WIDGET (Square 2x2) ===
+    polaroid.layoutVertically();
+
+    const topRow = polaroid.addStack();
+    topRow.layoutHorizontally();
+
+    const b1 = topRow.addStack();
+    b1.backgroundColor = new Color("#FFE4EE");
+    b1.cornerRadius = 10;
+    b1.setPadding(6, 12, 6, 12);
+    const t1 = b1.addText(`💖 Bên nhau ${loveDays} ngày 💕`);
+    t1.font = Font.boldSystemFont(13);
+    t1.textColor = new Color("#FF4785");
+
+    topRow.addSpacer();
+
+    const b2 = topRow.addStack();
+    b2.backgroundColor = new Color("#E0F2FE");
+    b2.cornerRadius = 10;
+    b2.setPadding(6, 12, 6, 12);
+    const t2 = b2.addText(upcomingDaysLeft !== null ? `✈️ Còn ${upcomingDaysLeft} ngày` : `✨ Lynsey & Vak`);
+    t2.font = Font.boldSystemFont(13);
+    t2.textColor = new Color("#0284C7");
+
+    polaroid.addSpacer(10);
+
+    if (img) {
+      const wImg = polaroid.addImage(img);
+      wImg.imageSize = new Size(290, 200);
+      wImg.applyFillingContentMode();
+      wImg.cornerRadius = 12;
+    }
+
+    polaroid.addSpacer(10);
+
+    const foot = polaroid.addStack();
+    foot.layoutVertically();
+    if (upcomingTripName) {
+      const tf = foot.addText(`✈️ Chuyến đi sắp tới: ${upcomingTripName}`);
+      tf.font = Font.boldSystemFont(14);
+      tf.textColor = new Color("#1E1B4B");
+    }
+    const nf = foot.addText("Lynsey & Vak 💕 - Cùng em đi khắp thế gian");
+    nf.font = Font.systemFont(12);
+    nf.textColor = new Color("#FF6B9D");
   }
-
-  polaroid.addSpacer(5);
-
-  // --- FOOTER: UPCOMING TRIP NAME & NAMES ---
-  const footStack = polaroid.addStack();
-  footStack.layoutVertically();
-
-  if (upcomingTripName) {
-    const tripFoot = footStack.addStack();
-    tripFoot.addSpacer();
-    const tripNameLabel = tripFoot.addText(`✈️ ${upcomingTripName}`);
-    tripNameLabel.font = Font.boldSystemFont(11);
-    tripNameLabel.textColor = new Color("#1E1B4B");
-    tripFoot.addSpacer();
-  }
-
-  const nameFoot = footStack.addStack();
-  nameFoot.addSpacer();
-  const caption = nameFoot.addText("Lynsey & Vak 💕");
-  caption.font = Font.boldSystemFont(upcomingTripName ? 9 : 11);
-  caption.textColor = new Color("#FF6B9D");
-  nameFoot.addSpacer();
 
   return widget;
 }
