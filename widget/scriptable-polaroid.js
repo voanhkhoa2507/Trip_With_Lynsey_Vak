@@ -149,7 +149,7 @@ async function createWidget() {
     loveCard.borderColor = new Color("#FFE4EE");
     loveCard.borderWidth = 1;
 
-    const lTitle = loveCard.addText("💖 BÊN NHAU ĐƯỢC");
+    const lTitle = loveCard.addText("💖 LOVE DAYS");
     lTitle.font = Font.boldSystemFont(9);
     lTitle.textColor = new Color("#FF6B9D");
 
@@ -268,7 +268,7 @@ async function createWidget() {
       tf.font = Font.boldSystemFont(14);
       tf.textColor = new Color("#1E1B4B");
     }
-    const nf = foot.addText("Lynsey & Vak 💕 - Cùng em đi khắp thế gian");
+    const nf = foot.addText("Lynsey & Vak 💕");
     nf.font = Font.systemFont(12);
     nf.textColor = new Color("#FF6B9D");
   }

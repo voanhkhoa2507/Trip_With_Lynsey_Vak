@@ -988,7 +988,7 @@ function downloadBoardingPassAsCanvas(trip) {
 
   ctx.font = 'bold 15px Quicksand, sans-serif';
   ctx.fillStyle = '#FF6B9D';
-  ctx.fillText('"Cùng em đi khắp thế gian 💕"', 300, 670);
+  ctx.fillText('""', 300, 670);
 
   // Download
   const link = document.createElement('a');
