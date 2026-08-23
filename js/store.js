@@ -19,9 +19,102 @@ const db = getFirestore(app);
 
 // Store configurations
 const LOCAL_STORAGE_KEY = 'trip_with_lynsey_data';
+const SETTINGS_STORAGE_KEY = 'trip_with_lynsey_settings';
+const CAPSULES_STORAGE_KEY = 'trip_with_lynsey_capsules';
 const DB_NAME = 'TripMediaDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'media';
+
+// --- SettingsStore (Love anniversary & Couple info) ---
+export const SettingsStore = {
+  get() {
+    try {
+      const data = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      const defaults = {
+        anniversaryDate: '2024-01-01',
+        coupleTitle: 'Lynsey & Vak 💕',
+        user1: 'Vak',
+        user2: 'Lynsey',
+        customVisitedProvinces: []
+      };
+      return data ? { ...defaults, ...JSON.parse(data) } : defaults;
+    } catch (e) {
+      console.error('Failed to load settings', e);
+      return { anniversaryDate: '2024-01-01', coupleTitle: 'Lynsey & Vak 💕', user1: 'Vak', user2: 'Lynsey', customVisitedProvinces: [] };
+    }
+  },
+
+  async save(settings) {
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      await setDoc(doc(db, "settings", "general"), settings);
+    } catch (e) {
+      console.error('Failed to save settings', e);
+    }
+  },
+
+  _saveLocal(settings) {
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    } catch (e) {}
+  }
+};
+
+// --- TimeCapsuleStore (Hộp thư thời gian bí mật) ---
+export const TimeCapsuleStore = {
+  getAll() {
+    return this._load();
+  },
+
+  getById(id) {
+    const list = this._load();
+    return list.find(c => c.id === id) || null;
+  },
+
+  async save(capsule) {
+    const list = this._load();
+    const index = list.findIndex(c => c.id === capsule.id);
+    if (index >= 0) {
+      list[index] = capsule;
+    } else {
+      list.push(capsule);
+    }
+    this._save(list);
+
+    try {
+      await setDoc(doc(db, "time_capsules", capsule.id), capsule);
+    } catch (e) {
+      console.error('Firestore save capsule error:', e);
+    }
+  },
+
+  async delete(id) {
+    const list = this._load();
+    const newList = list.filter(c => c.id !== id);
+    this._save(newList);
+
+    try {
+      await deleteDoc(doc(db, "time_capsules", id));
+    } catch (e) {
+      console.error('Firestore delete capsule error:', e);
+    }
+  },
+
+  _load() {
+    try {
+      const data = localStorage.getItem(CAPSULES_STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  _save(list) {
+    try {
+      localStorage.setItem(CAPSULES_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+};
 
 // --- TripStore ---
 export const TripStore = {
@@ -205,6 +298,28 @@ export function subscribeToRealtimeUpdates(onUpdateCallback) {
     console.error("Trips realtime error:", err);
   });
 
+  // Listen to Settings
+  onSnapshot(doc(db, "settings", "general"), (docSnap) => {
+    if (docSnap.exists()) {
+      SettingsStore._saveLocal(docSnap.data());
+      if (onUpdateCallback) onUpdateCallback('settings');
+    }
+  }, (err) => {
+    console.error("Settings realtime error:", err);
+  });
+
+  // Listen to Time Capsules
+  onSnapshot(collection(db, "time_capsules"), (snapshot) => {
+    const list = [];
+    snapshot.forEach((docSnap) => {
+      list.push(docSnap.data());
+    });
+    TimeCapsuleStore._save(list);
+    if (onUpdateCallback) onUpdateCallback('time_capsules');
+  }, (err) => {
+    console.error("Time capsules realtime error:", err);
+  });
+
   // Listen to Media
   onSnapshot(collection(db, "media"), (snapshot) => {
     snapshot.forEach(async (docSnap) => {
@@ -234,7 +349,7 @@ export function subscribeToRealtimeUpdates(onUpdateCallback) {
 const compressMedia = (blob) => {
   return new Promise((resolve) => {
     if (!blob.type.startsWith('image/')) {
-      resolve(blob); // non-image (video/etc) return as is
+      resolve(blob);
       return;
     }
     const img = new Image();
@@ -244,7 +359,7 @@ const compressMedia = (blob) => {
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
-      const maxDim = 1200; // max dimension
+      const maxDim = 1200;
 
       if (width > maxDim || height > maxDim) {
         if (width > height) {
@@ -266,7 +381,7 @@ const compressMedia = (blob) => {
           resolve(compressedBlob || blob);
         },
         'image/jpeg',
-        0.75 // 75% quality
+        0.75
       );
     };
     img.onerror = () => resolve(blob);
@@ -300,9 +415,115 @@ const base64ToBlob = (base64, type) => {
   return new Blob(byteArrays, { type: type || 'image/jpeg' });
 };
 
+// --- Vietnam 63 Provinces Reference List ---
+export const VIETNAM_PROVINCES = [
+  // Miền Bắc
+  { id: 'hanoi', name: 'Hà Nội', region: 'north' },
+  { id: 'haiphong', name: 'Hải Phòng', region: 'north' },
+  { id: 'quangninh', name: 'Quảng Ninh', region: 'north' },
+  { id: 'laocai', name: 'Lào Cai (Sa Pa)', region: 'north' },
+  { id: 'hagiang', name: 'Hà Giang', region: 'north' },
+  { id: 'ninhbinh', name: 'Ninh Bình', region: 'north' },
+  { id: 'hoabinh', name: 'Hòa Bình', region: 'north' },
+  { id: 'sonla', name: 'Sơn La (Mộc Châu)', region: 'north' },
+  { id: 'dienbien', name: 'Điện Biên', region: 'north' },
+  { id: 'laichau', name: 'Lai Châu', region: 'north' },
+  { id: 'yenvai', name: 'Yên Bái', region: 'north' },
+  { id: 'tuyenquang', name: 'Tuyên Quang', region: 'north' },
+  { id: 'caobang', name: 'Cao Bằng', region: 'north' },
+  { id: 'baclieu_north', name: 'Bắc Kạn', region: 'north' },
+  { id: 'thainguyen', name: 'Thái Nguyên', region: 'north' },
+  { id: 'langson', name: 'Lạng Sơn', region: 'north' },
+  { id: 'bacgiang', name: 'Bắc Giang', region: 'north' },
+  { id: 'phutho', name: 'Phú Thọ', region: 'north' },
+  { id: 'vinhphuc', name: 'Vĩnh Phúc (Tam Đảo)', region: 'north' },
+  { id: 'bacninh', name: 'Bắc Ninh', region: 'north' },
+  { id: 'hungyen', name: 'Hưng Yên', region: 'north' },
+  { id: 'haiduong', name: 'Hải Dương', region: 'north' },
+  { id: 'hanam', name: 'Hà Nam', region: 'north' },
+  { id: 'thaibinh', name: 'Thái Bình', region: 'north' },
+  { id: 'namdinh', name: 'Nam Định', region: 'north' },
+
+  // Miền Trung & Tây Nguyên
+  { id: 'danang', name: 'Đà Nẵng', region: 'central' },
+  { id: 'thua_thien_hue', name: 'Thừa Thiên Huế', region: 'central' },
+  { id: 'quangnam', name: 'Quảng Nam (Hội An)', region: 'central' },
+  { id: 'lamdong', name: 'Lâm Đồng (Đà Lạt)', region: 'central' },
+  { id: 'khanhhoa', name: 'Khánh Hòa (Nha Trang)', region: 'central' },
+  { id: 'binhdinh', name: 'Bình Định (Quy Nhơn)', region: 'central' },
+  { id: 'phuyen', name: 'Phú Yên', region: 'central' },
+  { id: 'ninhthuan', name: 'Ninh Thuận', region: 'central' },
+  { id: 'binhthuan', name: 'Bình Thuận (Phan Thiết)', region: 'central' },
+  { id: 'quangngai', name: 'Quảng Ngãi', region: 'central' },
+  { id: 'quangtri', name: 'Quảng Trị', region: 'central' },
+  { id: 'quangbinh', name: 'Quảng Bình', region: 'central' },
+  { id: 'hatinh', name: 'Hà Tĩnh', region: 'central' },
+  { id: 'nghean', name: 'Nghệ An', region: 'central' },
+  { id: 'thanhhoa', name: 'Thanh Hóa', region: 'central' },
+  { id: 'kontum', name: 'Kon Tum', region: 'central' },
+  { id: 'gialai', name: 'Gia Lai', region: 'central' },
+  { id: 'daklak', name: 'Đắk Lắk', region: 'central' },
+  { id: 'daknong', name: 'Đắk Nông', region: 'central' },
+
+  // Miền Nam
+  { id: 'tphcm', name: 'TP. Hồ Chí Minh', region: 'south' },
+  { id: 'kiengiang', name: 'Kiên Giang (Phú Quốc)', region: 'south' },
+  { id: 'bariavungtau', name: 'Bà Rịa - Vũng Tàu', region: 'south' },
+  { id: 'cantho', name: 'Cần Thơ', region: 'south' },
+  { id: 'dongnai', name: 'Đồng Nai', region: 'south' },
+  { id: 'binhduong', name: 'Bình Dương', region: 'south' },
+  { id: 'binhphuoc', name: 'Bình Phước', region: 'south' },
+  { id: 'tayninh', name: 'Tây Ninh', region: 'south' },
+  { id: 'longan', name: 'Long An', region: 'south' },
+  { id: 'tiengiang', name: 'Tiền Giang', region: 'south' },
+  { id: 'bentre', name: 'Bến Tre', region: 'south' },
+  { id: 'dongthap', name: 'Đồng Tháp', region: 'south' },
+  { id: 'vinhlong', name: 'Vĩnh Long', region: 'south' },
+  { id: 'angiang', name: 'An Giang', region: 'south' },
+  { id: 'haugiang', name: 'Hậu Giang', region: 'south' },
+  { id: 'soctrang', name: 'Sóc Trăng', region: 'south' },
+  { id: 'baclieu', name: 'Bạc Liêu', region: 'south' },
+  { id: 'camau', name: 'Cà Mau', region: 'south' },
+  { id: 'travinh', name: 'Trà Vinh', region: 'south' }
+];
+
+// Calculate stats for Scratch Map
+export function getVisitedStats(trips) {
+  const settings = SettingsStore.get();
+  const custom = settings.customVisitedProvinces || [];
+  
+  const visitedMap = {}; // { provinceId: count }
+
+  // Scan trips destination
+  trips.forEach(t => {
+    const dest = (t.destination || '').toLowerCase();
+    const name = (t.name || '').toLowerCase();
+    VIETNAM_PROVINCES.forEach(p => {
+      const pName = p.name.toLowerCase();
+      const purePName = pName.replace(/\(.*?\)/g, '').trim();
+      if (dest.includes(purePName) || name.includes(purePName) || (p.id === 'danang' && dest.includes('đà nẵng')) || (p.id === 'thua_thien_hue' && dest.includes('huế')) || (p.id === 'lamdong' && dest.includes('đà lạt')) || (p.id === 'quangnam' && dest.includes('hội an')) || (p.id === 'kiengiang' && dest.includes('phú quốc'))) {
+        visitedMap[p.id] = (visitedMap[p.id] || 0) + 1;
+      }
+    });
+  });
+
+  // Add custom checked
+  custom.forEach(id => {
+    if (!visitedMap[id]) visitedMap[id] = 1;
+  });
+
+  const visitedCount = Object.keys(visitedMap).length;
+  const totalCount = VIETNAM_PROVINCES.length;
+  const percentage = Math.round((visitedCount / totalCount) * 100);
+
+  return { visitedMap, visitedCount, totalCount, percentage };
+}
+
 // --- Import / Export ---
 export async function exportAllData() {
   const trips = TripStore.getAll();
+  const settings = SettingsStore.get();
+  const timeCapsules = TimeCapsuleStore.getAll();
   const keys = await MediaStore.getAllKeys();
   const mediaData = [];
 
@@ -319,8 +540,10 @@ export async function exportAllData() {
   }
 
   const exportObject = {
-    version: 1,
+    version: 2,
     exportDate: new Date().toISOString(),
+    settings,
+    timeCapsules,
     trips,
     media: mediaData
   };
@@ -339,6 +562,18 @@ export async function importAllData(file) {
         
         if (!importObject.trips || !importObject.media) {
           throw new Error('Invalid backup file format.');
+        }
+
+        // Restore settings if present
+        if (importObject.settings) {
+          await SettingsStore.save(importObject.settings);
+        }
+
+        // Restore time capsules if present
+        if (importObject.timeCapsules) {
+          for (const cap of importObject.timeCapsules) {
+            await TimeCapsuleStore.save(cap);
+          }
         }
 
         // Restore trips

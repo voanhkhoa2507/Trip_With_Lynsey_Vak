@@ -61,7 +61,10 @@ export function renderTrip(container, tripId) {
         <button class="back-btn btn-icon" onclick="window.location.hash='#/'">←</button>
         <h2 class="page-title">${trip.name}</h2>
       </div>
-      <span class="badge badge-primary">${trip.destination || 'N/A'}</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn btn-secondary btn-sm" id="btn-boarding-pass" style="box-shadow:var(--shadow-clay);">🎫 Vé kỷ niệm</button>
+        <span class="badge badge-primary">${trip.destination || 'N/A'}</span>
+      </div>
     </div>
 
     <div class="notes-penalties-container mb-16">
@@ -104,6 +107,10 @@ export function renderTrip(container, tripId) {
   container.querySelectorAll('.penalty-input').forEach(input => {
     input.addEventListener('input', handlePenaltyChange);
     input.addEventListener('change', handlePenaltyChange);
+  });
+
+  container.querySelector('#btn-boarding-pass')?.addEventListener('click', () => {
+    openBoardingPassModal(trip);
   });
 
   const tabs = container.querySelectorAll('.tab-item');
@@ -812,4 +819,181 @@ function formatDate(dateStr) {
 
 function formatCurrency(amount) {
   return Number(amount).toLocaleString('vi-VN') + ' ₫';
+}
+
+function openBoardingPassModal(trip) {
+  const dest = trip.destination || trip.name || 'Điểm Hẹn';
+  const startDate = trip.startDate ? formatDate(trip.startDate) : 'Sắp tới';
+
+  showModal({
+    title: '🎫 Vé Máy Bay Kỷ Niệm',
+    contentHTML: `
+      <div class="boarding-pass-modal-container">
+        <div class="boarding-pass" id="boarding-pass-card">
+          <div class="bp-header">
+            <div class="bp-airline-name">✈️ VAK & LYNSEY AIRWAYS 💕</div>
+            <div class="bp-flight-tag">TRIP-2026</div>
+          </div>
+          <div class="bp-route">
+            <div>
+              <div class="bp-city">HÀNH TRÌNH</div>
+              <div class="bp-city-sub">Điểm xuất phát</div>
+            </div>
+            <div class="bp-plane-icon">✈️</div>
+            <div>
+              <div class="bp-city">${dest.toUpperCase()}</div>
+              <div class="bp-city-sub">Điểm đến</div>
+            </div>
+          </div>
+          <div class="bp-divider">
+            <div class="bp-dash-line"></div>
+          </div>
+          <div class="bp-details">
+            <div class="bp-item">
+              <label>HÀNH KHÁCH</label>
+              <span>Lynsey & Vak 💕</span>
+            </div>
+            <div class="bp-item">
+              <label>NGÀY BAY</label>
+              <span>${startDate}</span>
+            </div>
+            <div class="bp-item">
+              <label>GHẾ NGỒI</label>
+              <span style="color:var(--color-primary);">Cạnh Nhau 💕</span>
+            </div>
+            <div class="bp-item">
+              <label>CỬA RA (GATE)</label>
+              <span style="color:var(--color-secondary);">Trái Tim 💕</span>
+            </div>
+          </div>
+          <div class="bp-barcode-section">
+            <div class="bp-barcode">||| | |||| | || |||| | |||</div>
+            <div class="bp-footer-quote">"Cùng em đi khắp thế gian 💕"</div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; justify-content:center; width:100%;">
+          <button class="btn btn-primary btn-sm" id="btn-download-bp">📸 Tải ảnh vé về máy</button>
+          <button class="btn btn-secondary btn-sm" id="btn-print-bp">🖨️ In vé</button>
+        </div>
+      </div>
+    `,
+    showFooter: false
+  });
+
+  document.getElementById('btn-download-bp')?.addEventListener('click', () => {
+    downloadBoardingPassAsCanvas(trip);
+  });
+
+  document.getElementById('btn-print-bp')?.addEventListener('click', () => {
+    window.print();
+  });
+}
+
+function downloadBoardingPassAsCanvas(trip) {
+  const dest = (trip.destination || trip.name || 'Điểm Hẹn').toUpperCase();
+  const startDate = trip.startDate ? formatDate(trip.startDate) : 'Sắp tới';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 720;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#FFFFFF';
+  ctx.roundRect(0, 0, 600, 720, 32);
+  ctx.fill();
+
+  // Header background
+  const grad = ctx.createLinearGradient(0, 0, 600, 120);
+  grad.addColorStop(0, '#FF6B9D');
+  grad.addColorStop(1, '#FF4785');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, 600, 120, [32, 32, 0, 0]);
+  ctx.fill();
+
+  // Header text
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 24px Quicksand, sans-serif';
+  ctx.fillText('✈️ VAK & LYNSEY AIRWAYS 💕', 32, 70);
+
+  ctx.font = 'bold 16px Quicksand, sans-serif';
+  ctx.fillText('TRIP-2026', 480, 70);
+
+  // Route
+  ctx.fillStyle = '#1E1B4B';
+  ctx.font = 'bold 22px Quicksand, sans-serif';
+  ctx.fillText('HÀNH TRÌNH', 48, 190);
+  ctx.font = '14px Quicksand, sans-serif';
+  ctx.fillStyle = '#6B7280';
+  ctx.fillText('Điểm xuất phát', 48, 215);
+
+  ctx.fillStyle = '#FF6B9D';
+  ctx.font = '32px sans-serif';
+  ctx.fillText('✈️', 280, 200);
+
+  ctx.fillStyle = '#1E1B4B';
+  ctx.font = 'bold 22px Quicksand, sans-serif';
+  ctx.fillText(dest.length > 12 ? dest.slice(0, 12) + '...' : dest, 380, 190);
+  ctx.font = '14px Quicksand, sans-serif';
+  ctx.fillStyle = '#6B7280';
+  ctx.fillText('Điểm đến', 380, 215);
+
+  // Dashed Line & Cutouts
+  ctx.strokeStyle = '#CBD5E1';
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(30, 260);
+  ctx.lineTo(570, 260);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Cutouts
+  ctx.fillStyle = '#F0F9FF';
+  ctx.beginPath();
+  ctx.arc(0, 260, 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(600, 260, 20, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Details
+  const drawField = (label, val, x, y, color = '#1E1B4B') => {
+    ctx.fillStyle = '#6B7280';
+    ctx.font = '600 13px Quicksand, sans-serif';
+    ctx.fillText(label.toUpperCase(), x, y);
+    ctx.fillStyle = color;
+    ctx.font = 'bold 20px Quicksand, sans-serif';
+    ctx.fillText(val, x, y + 28);
+  };
+
+  drawField('HÀNH KHÁCH', 'Lynsey & Vak 💕', 48, 320);
+  drawField('NGÀY BAY', startDate, 340, 320);
+  drawField('GHẾ NGỒI', 'Cạnh Nhau 💕', 48, 410, '#FF6B9D');
+  drawField('CỬA RA (GATE)', 'Trái Tim 💕', 340, 410, '#C084FC');
+  drawField('GIỜ LÊN MÁY BAY', 'Trọn Đời ✨', 48, 500);
+  drawField('HẠNG VÉ', 'Hạnh Phúc Nhất 💖', 340, 500);
+
+  // Barcode & Quote
+  ctx.fillStyle = '#FAFAFA';
+  ctx.beginPath();
+  ctx.roundRect(0, 570, 600, 150, [0, 0, 32, 32]);
+  ctx.fill();
+
+  ctx.fillStyle = '#334155';
+  ctx.font = '28px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('|||| | || |||| | ||||| || | ||||', 300, 630);
+
+  ctx.font = 'bold 15px Quicksand, sans-serif';
+  ctx.fillStyle = '#FF6B9D';
+  ctx.fillText('"Cùng em đi khắp thế gian 💕"', 300, 670);
+
+  // Download
+  const link = document.createElement('a');
+  link.download = `Ve_may_bay_${dest}_Lynsey_Vak.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('Đã tải vé máy bay kỷ niệm về máy! ✈️💕');
 }
