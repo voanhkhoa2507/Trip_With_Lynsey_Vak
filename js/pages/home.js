@@ -428,11 +428,11 @@ export function renderHome(container) {
           contentHTML: `
             <div style="text-align:center; padding:16px 0;">
               <div style="font-size:3.5rem; margin-bottom:10px;">🥳✨</div>
-              <p style="font-size:1rem; color:var(--color-text-secondary); margin-bottom:6px;">Lựa chọn tuyệt vời cho hai bạn hôm nay là:</p>
+              <p style="font-size:1rem; color:var(--color-text-secondary); margin-bottom:6px;">Chốt!!!</p>
               <div style="font-size:1.6rem; font-weight:700; color:var(--color-primary); background:var(--bg-main); padding:14px 20px; border-radius:var(--radius-md); box-shadow:var(--shadow-clay-inset); margin:14px 0;">
                 ${winner}
               </div>
-              <p style="font-size:0.9rem; color:var(--color-secondary); font-weight:600;">Chúc Lynsey & Vak có một buổi hẹn hò thật vui! 💕</p>
+              <p style="font-size:0.9rem; color:var(--color-secondary); font-weight:600;"> 💕</p>
             </div>
           `,
           showFooter: false
