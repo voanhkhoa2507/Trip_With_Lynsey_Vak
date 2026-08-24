@@ -34,7 +34,7 @@ export function renderHome(container) {
   container.innerHTML = `
     <div class="app-header">
       <h1>${settings.coupleTitle || 'Lynsey & Vak Trip 😋'}</h1>
-      <p>💕 Lưu giữ mọi hành trình và khoảnh khắc yêu thương 💕</p>
+      <p></p>
       
       <div class="import-export-bar mt-16">
         <button class="btn btn-secondary btn-sm" id="btn-import">📥 Nhập dữ liệu</button>
