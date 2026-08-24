@@ -1,8 +1,7 @@
 import { TripStore, MediaStore } from '../store.js';
 import { showModal, hideModal, showConfirm, showToast } from '../app.js';
 
-let expenseUnlocked = false;
-let activeTab = 'schedule'; // 'schedule', 'memories', 'expenses'
+let activeTab = 'schedule'; // 'schedule', 'memories', 'receipts'
 let objectUrls = [];
 
 function clearUrls() {
@@ -25,7 +24,7 @@ export function renderTrip(container, tripId) {
 
   // Ensure arrays and objects exist
   trip.days = trip.days || [];
-  trip.expenses = trip.expenses || [];
+  trip.receipts = trip.receipts || [];
   trip.media = trip.media || [];
   trip.penalties = trip.penalties || { bungTran: 0, troiTay: 0, k: 0 };
   if (trip.penalties.troiTay === undefined && trip.penalties.cuDau !== undefined) {
@@ -81,11 +80,11 @@ export function renderTrip(container, tripId) {
             <input type="number" min="0" class="penalty-input" data-key="bungTran" value="${trip.penalties?.bungTran ?? 0}">
           </div>
           <div class="penalty-item">
-            <span class="penalty-label">🔗 Trói tay (1cái=5p)</span>
+            <span class="penalty-label">🔗 Trói tay</span>
             <input type="number" min="0" class="penalty-input" data-key="troiTay" value="${trip.penalties?.troiTay ?? trip.penalties?.cuDau ?? 0}">
           </div>
           <div class="penalty-item">
-            <span class="penalty-label">❓ K (1cái=1p)</span>
+            <span class="penalty-label">💸 K</span>
             <input type="number" min="0" class="penalty-input" data-key="k" value="${trip.penalties?.k ?? 0}">
           </div>
         </div>
@@ -95,12 +94,12 @@ export function renderTrip(container, tripId) {
     <div class="tab-bar">
       <div class="tab-item ${activeTab === 'schedule' ? 'active' : ''}" data-tab="schedule">📅 Lịch trình</div>
       <div class="tab-item ${activeTab === 'memories' ? 'active' : ''}" data-tab="memories">📸 Memories</div>
-      <div class="tab-item ${activeTab === 'expenses' ? 'active' : ''}" data-tab="expenses">💰 Chi phí</div>
+      <div class="tab-item ${activeTab === 'receipts' ? 'active' : ''}" data-tab="receipts">🧾 Vé & Hóa đơn (${trip.receipts.length})</div>
     </div>
 
     <div class="tab-content ${activeTab === 'schedule' ? 'active' : ''}" id="tab-schedule"></div>
     <div class="tab-content ${activeTab === 'memories' ? 'active' : ''}" id="tab-memories"></div>
-    <div class="tab-content ${activeTab === 'expenses' ? 'active' : ''}" id="tab-expenses"></div>
+    <div class="tab-content ${activeTab === 'receipts' ? 'active' : ''}" id="tab-receipts"></div>
   `;
 
   container.querySelector('.note-textarea').addEventListener('input', handleNoteChange);
@@ -117,7 +116,7 @@ export function renderTrip(container, tripId) {
   const contents = {
     schedule: container.querySelector('#tab-schedule'),
     memories: container.querySelector('#tab-memories'),
-    expenses: container.querySelector('#tab-expenses')
+    receipts: container.querySelector('#tab-receipts')
   };
 
   tabs.forEach(tab => {
@@ -129,19 +128,12 @@ export function renderTrip(container, tripId) {
       const tabId = tab.getAttribute('data-tab');
       contents[tabId].classList.add('active');
       activeTab = tabId;
-
-      if (tabId === 'expenses' && !expenseUnlocked) {
-        renderPasswordGate();
-      }
     });
   });
 
   renderSchedule();
   renderMemories();
-  if (activeTab === 'expenses') {
-    if (expenseUnlocked) renderExpenses();
-    else renderPasswordGate();
-  }
+  renderReceipts();
 
   // --- Sub-render functions ---
 
@@ -194,7 +186,7 @@ export function renderTrip(container, tripId) {
         <div class="polaroid-clothesline-container" style="padding: 10px; min-height: unset; text-align: center;">
           <div class="clothesline-wire" style="top: 50%;"></div>
           <div style="position: relative; z-index: 2; font-size: 0.8rem; color: var(--color-text-secondary); background: var(--bg-card); display: inline-block; padding: 4px 12px; border-radius: 12px; box-shadow: var(--shadow-clay);">
-            ✨ Treo ảnh Polaroid💕
+            ✨ Thêm hoạt động để treo ảnh Polaroid nhé 💕
           </div>
         </div>
       `;
@@ -281,13 +273,11 @@ export function renderTrip(container, tripId) {
       btn.addEventListener('click', () => {
         const dayId = btn.getAttribute('data-id');
         showConfirm({
-          message: 'Xóa ngày này sẽ xóa luôn các hoạt động và chi phí liên quan. Bạn chắc chứ?',
+          message: 'Xóa ngày này sẽ xóa luôn các hoạt động liên quan. Bạn chắc chứ?',
           onConfirm: () => {
             trip.days = trip.days.filter(d => d.id !== dayId);
-            trip.expenses = trip.expenses.filter(e => e.dayId !== dayId);
             TripStore.save(trip);
             renderSchedule();
-            if (expenseUnlocked) renderExpenses();
           }
         });
       });
@@ -384,68 +374,76 @@ export function renderTrip(container, tripId) {
       const files = Array.from(e.target.files);
       if (!files.length) return;
 
+      showToast(`Đang tải lên ${files.length} tệp...`, 'info');
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const mediaId = 'media_' + Date.now() + '_' + i;
         const mediaKey = `blob_${trip.id}_${Date.now()}_${i}`;
+        const type = file.type.startsWith('video') ? 'video' : 'image';
 
         try {
           await MediaStore.save(mediaKey, file);
           trip.media.push({
-            id: 'media_' + Date.now() + '_' + i,
-            mediaKey: mediaKey,
-            type: file.type.startsWith('video/') ? 'video' : 'image',
+            id: mediaId,
+            mediaKey,
+            type,
             caption: '',
             createdAt: new Date().toISOString()
           });
-          if (!trip.coverMediaKey && file.type.startsWith('image/')) {
-            trip.coverMediaKey = mediaKey;
-          }
         } catch (err) {
-          showToast('Lỗi khi tải lên file', 'error');
+          console.error(err);
+          showToast(`Lỗi khi tải tệp ${file.name}`, 'error');
         }
       }
+
       TripStore.save(trip);
       renderMemories();
+      showToast('Tải lên hoàn tất!');
     });
+
+    if (trip.media.length === 0) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p class="empty-state-text">Chưa có ảnh/video nào</p></div>';
+      return;
+    }
 
     trip.media.forEach((item, index) => {
       const card = document.createElement('div');
       card.className = 'media-card clay-card slide-up';
-      card.style.animationDelay = `${index * 0.1}s`;
+      card.style.animationDelay = `${index * 0.05}s`;
 
       const mediaContainer = document.createElement('div');
-      mediaContainer.style.width = '100%';
-      mediaContainer.style.height = '150px';
-      mediaContainer.style.background = '#eee';
-
-      const caption = document.createElement('div');
-      caption.className = 'media-caption';
-      caption.textContent = item.caption || 'Nhấn để thêm mô tả';
-      caption.style.cursor = 'pointer';
-
-      caption.addEventListener('click', () => {
-        const newCap = prompt('Nhập mô tả:', item.caption);
-        if (newCap !== null) {
-          item.caption = newCap;
-          TripStore.save(trip);
-          caption.textContent = item.caption || 'Nhấn để thêm mô tả';
-        }
-      });
+      mediaContainer.innerHTML = '<div style="height: 220px; display: flex; align-items: center; justify-content: center;">⏳</div>';
 
       const overlay = document.createElement('div');
       overlay.className = 'media-card-overlay';
+
+      const caption = document.createElement('div');
+      caption.className = 'media-caption';
+      caption.style.cursor = 'pointer';
+      caption.innerText = item.caption || 'Nhấn để thêm mô tả...';
+
+      caption.addEventListener('click', () => {
+        const newCap = prompt('Nhập mô tả cho ảnh/video:', item.caption || '');
+        if (newCap !== null) {
+          item.caption = newCap;
+          TripStore.save(trip);
+          caption.innerText = item.caption || 'Nhấn để thêm mô tả...';
+        }
+      });
+
       const delBtn = document.createElement('button');
-      delBtn.className = 'btn-icon btn-sm btn-danger';
-      delBtn.textContent = '🗑️';
-      delBtn.addEventListener('click', async () => {
+      delBtn.className = 'btn-icon btn-sm';
+      delBtn.innerText = '🗑️';
+      delBtn.addEventListener('click', () => {
         showConfirm({
-          message: 'Xóa ảnh/video này?',
+          message: 'Xóa tệp media này?',
           onConfirm: async () => {
-            trip.media = trip.media.filter(m => m.id !== item.id);
-            if (trip.coverMediaKey === item.mediaKey) trip.coverMediaKey = null;
-            TripStore.save(trip);
             await MediaStore.delete(item.mediaKey);
+            trip.media = trip.media.filter(m => m.id !== item.id);
+            TripStore.save(trip);
             renderMemories();
+            showToast('Đã xóa tệp media');
           }
         });
       });
@@ -472,78 +470,71 @@ export function renderTrip(container, tripId) {
     });
   }
 
-  function renderPasswordGate() {
-    const exp = contents.expenses;
-    exp.innerHTML = `
-      <div class="password-gate">
-        <div class="password-gate-icon">🔒</div>
-        <div class="password-gate-text">Phải có pass mới xem được hehehe</div>
-        <div class="password-input-group">
-          <input type="password" class="password-input form-input" id="exp-pwd" placeholder="Mật khẩu" />
-          <button class="btn btn-primary" id="btn-unlock-exp">Mở</button>
+  function renderReceipts() {
+    const recContainer = contents.receipts;
+    const receipts = trip.receipts || [];
+
+    let totalAmount = 0;
+    receipts.forEach(r => {
+      if (r.amount && !isNaN(Number(r.amount))) totalAmount += Number(r.amount);
+    });
+
+    let html = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+        <div>
+          <h3 style="font-size:1.2rem; font-weight:700; color:var(--color-primary);">🧾 Vé & Hóa Đơn Kỷ Niệm (${receipts.length})</h3>
+          <p style="font-size:0.85rem; color:var(--color-text-secondary);">Lưu giữ vé xem phim, vé máy bay, hóa đơn ăn uống, khách sạn...</p>
         </div>
+        <button class="btn btn-primary btn-sm" id="btn-add-receipt">+ Thêm vé / hóa đơn</button>
       </div>
     `;
 
-    const btn = exp.querySelector('#btn-unlock-exp');
-    const input = exp.querySelector('#exp-pwd');
+    if (receipts.length === 0) {
+      html += `
+        <div class="empty-state">
+          <div class="empty-state-icon">🎟️</div>
+          <h3 class="empty-state-title">Chưa có vé hoặc hóa đơn nào</h3>
+          <p class="empty-state-text">Hãy chụp và tải ảnh vé xem phim, vé tham quan, hóa đơn kỷ niệm vào đây nhé!</p>
+          <button class="btn btn-primary mt-16" id="btn-add-first-receipt">+ Thêm vé / hóa đơn đầu tiên</button>
+        </div>
+      `;
+      recContainer.innerHTML = html;
+      recContainer.querySelector('#btn-add-receipt')?.addEventListener('click', () => openReceiptModal());
+      recContainer.querySelector('#btn-add-first-receipt')?.addEventListener('click', () => openReceiptModal());
+      return;
+    }
 
-    const unlock = () => {
-      if (input.value === '030107') {
-        expenseUnlocked = true;
-        renderExpenses();
-      } else {
-        showToast('Sai mật khẩu!', 'error');
-        const gate = exp.querySelector('.password-gate');
-        gate.style.animation = 'none';
-        gate.offsetHeight; /* trigger reflow */
-        gate.style.animation = 'shake 0.5s';
-      }
-    };
+    html += '<div class="receipt-grid">';
 
-    btn.addEventListener('click', unlock);
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') unlock();
-    });
-  }
-
-  function renderExpenses() {
-    const exp = contents.expenses;
-    let totalAll = 0;
-
-    let html = '<div class="expense-grid">';
-
-    trip.days.forEach((day, dayIndex) => {
-      let dayExp = trip.expenses.find(e => e.dayId === day.id);
-      if (!dayExp) {
-        dayExp = { dayId: day.id, items: [] };
-        trip.expenses.push(dayExp);
-      }
-
-      let dayTotal = 0;
-      let itemsHtml = '';
-
-      dayExp.items.forEach(item => {
-        dayTotal += item.amount;
-        itemsHtml += `
-          <div class="expense-item">
-            <div class="expense-name">${item.name}</div>
-            <div class="expense-amount">${formatCurrency(item.amount)}</div>
-            <button class="btn-icon btn-sm btn-del-exp" data-day="${day.id}" data-item="${item.id}">🗑️</button>
-          </div>
-        `;
-      });
-      totalAll += dayTotal;
+    receipts.forEach((rec, idx) => {
+      const typeLabel = rec.type === 'bill' ? '🧾 Hóa đơn' : (rec.type === 'ticket' ? '🎟️ Vé' : '📌 Chứng từ');
+      const formattedDate = rec.date ? formatDate(rec.date) : 'Không ghi ngày';
+      const formattedAmount = rec.amount ? formatCurrency(rec.amount) : null;
 
       html += `
-        <div class="expense-card clay-card slide-up" style="animation-delay: ${dayIndex * 0.1}s">
-          <div class="expense-card-header">
-            <div class="expense-card-title">${day.label}</div>
-            <div class="expense-card-total">${formatCurrency(dayTotal)}</div>
+        <div class="receipt-card slide-up" style="animation-delay: ${idx * 0.08}s">
+          <div class="receipt-thumb-wrap" id="rec-thumb-${rec.id}" title="Nhấn để xem ảnh phóng to">
+            <div style="font-size:2.5rem;">🎟️</div>
           </div>
-          <div style="margin-top: 16px;">
-            ${itemsHtml}
-            <button class="expense-add-btn btn-sm btn-secondary mt-16" data-day="${day.id}">+ Thêm chi phí</button>
+          <div class="receipt-body">
+            <div class="receipt-header-row">
+              <span class="badge badge-primary" style="font-size:0.75rem;">${typeLabel}</span>
+              <div class="receipt-actions">
+                <button class="btn-icon btn-sm btn-edit-receipt" data-id="${rec.id}" title="Chỉnh sửa">✏️</button>
+                <button class="btn-icon btn-sm btn-del-receipt" data-id="${rec.id}" title="Xóa">🗑️</button>
+              </div>
+            </div>
+            <div class="receipt-title">${rec.title}</div>
+            <div class="receipt-meta">
+              <span>📅 ${formattedDate}</span>
+            </div>
+            ${rec.note ? `<p style="font-size:0.85rem; color:var(--color-text-secondary); margin-bottom:8px; line-height:1.4;">${rec.note}</p>` : ''}
+            ${formattedAmount ? `
+              <div class="receipt-price-badge">
+                <span style="font-size:0.8rem; color:var(--color-text-secondary); font-weight:600;">Số tiền:</span>
+                <span>${formattedAmount}</span>
+              </div>
+            ` : ''}
           </div>
         </div>
       `;
@@ -551,30 +542,89 @@ export function renderTrip(container, tripId) {
 
     html += '</div>';
 
-    html += `
-      <div class="expense-total-bar clay-card mt-16 slide-up">
-        <div class="total-label">Tổng chi phí chuyến đi</div>
-        <div class="total-amount">${formatCurrency(totalAll)}</div>
-      </div>
-    `;
+    if (totalAmount > 0) {
+      html += `
+        <div class="expense-total-bar clay-card mt-16 slide-up">
+          <div class="total-label">Tổng số tiền các hóa đơn đã nhập</div>
+          <div class="total-amount">${formatCurrency(totalAmount)}</div>
+        </div>
+      `;
+    }
 
-    exp.innerHTML = html;
+    recContainer.innerHTML = html;
 
-    exp.querySelectorAll('.btn-del-exp').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const dayId = btn.getAttribute('data-day');
-        const itemId = btn.getAttribute('data-item');
-        const dayExp = trip.expenses.find(e => e.dayId === dayId);
-        if (dayExp) {
-          dayExp.items = dayExp.items.filter(i => i.id !== itemId);
-          TripStore.save(trip);
-          renderExpenses();
+    // Load images asynchronously & attach lightbox
+    receipts.forEach(rec => {
+      if (rec.photoKey) {
+        MediaStore.get(rec.photoKey).then(blob => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            objectUrls.push(url);
+            const thumbWrap = recContainer.querySelector(`#rec-thumb-${rec.id}`);
+            if (thumbWrap) {
+              thumbWrap.innerHTML = `<img src="${url}" alt="${rec.title}" />`;
+            }
+          }
+        });
+      }
+
+      recContainer.querySelector(`#rec-thumb-${rec.id}`)?.addEventListener('click', async () => {
+        if (rec.photoKey) {
+          const blob = await MediaStore.get(rec.photoKey);
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            objectUrls.push(url);
+            showModal({
+              title: rec.title || 'Ảnh vé / hóa đơn 🧾',
+              contentHTML: `
+                <div style="text-align:center;">
+                  <img src="${url}" style="max-width:100%; max-height:65vh; border-radius:var(--radius-md); box-shadow:var(--shadow-clay); object-fit:contain;" />
+                  <div style="margin-top:12px; font-weight:700; font-size:1.1rem; color:var(--color-primary);">${rec.title}</div>
+                  ${rec.date ? `<div style="font-size:0.85rem; color:var(--color-text-secondary); margin-top:4px;">📅 Ngày: ${formatDate(rec.date)}</div>` : ''}
+                  ${rec.amount ? `<div style="font-weight:700; color:var(--color-danger); margin-top:4px;">💰 ${formatCurrency(rec.amount)}</div>` : ''}
+                  ${rec.note ? `<p style="font-size:0.9rem; color:var(--color-text); margin-top:8px;">${rec.note}</p>` : ''}
+                </div>
+              `,
+              confirmText: '✏️ Chỉnh sửa',
+              onConfirm: () => {
+                hideModal();
+                openReceiptModal(rec);
+              }
+            });
+            return;
+          }
         }
+        openReceiptModal(rec);
       });
     });
 
-    exp.querySelectorAll('.expense-add-btn').forEach(btn => {
-      btn.addEventListener('click', () => openExpenseModal(btn.getAttribute('data-day')));
+    recContainer.querySelector('#btn-add-receipt')?.addEventListener('click', () => openReceiptModal());
+
+    recContainer.querySelectorAll('.btn-edit-receipt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const rec = (trip.receipts || []).find(r => r.id === id);
+        if (rec) openReceiptModal(rec);
+      });
+    });
+
+    recContainer.querySelectorAll('.btn-del-receipt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        showConfirm({
+          message: 'Bạn có chắc chắn muốn xóa vé/hóa đơn này?',
+          onConfirm: async () => {
+            const rec = (trip.receipts || []).find(r => r.id === id);
+            if (rec && rec.photoKey) {
+              await MediaStore.delete(rec.photoKey);
+            }
+            trip.receipts = (trip.receipts || []).filter(r => r.id !== id);
+            TripStore.save(trip);
+            renderReceipts();
+            showToast('Đã xóa vé/hóa đơn');
+          }
+        });
+      });
     });
   }
 
@@ -612,7 +662,6 @@ export function renderTrip(container, tripId) {
         TripStore.save(trip);
         hideModal();
         renderSchedule();
-        if (expenseUnlocked) renderExpenses();
       }
     });
   }
@@ -774,40 +823,163 @@ export function renderTrip(container, tripId) {
     }
   }
 
-  function openExpenseModal(dayId) {
+  async function openReceiptModal(existingReceipt = null) {
+    let selectedFile = null;
+    let removeExistingPhoto = false;
+
     showModal({
-      title: 'Thêm chi phí',
+      title: existingReceipt ? 'Sửa vé / Hóa đơn' : 'Thêm vé / Hóa đơn mới',
       contentHTML: `
         <div class="form-group">
-          <label class="form-label">Tên khoản chi</label>
-          <input type="text" class="form-input" id="modal-exp-name">
+          <label class="form-label">Tên vé / Hóa đơn</label>
+          <input type="text" class="form-input" id="modal-rec-title" value="${existingReceipt ? (existingReceipt.title || '') : ''}" placeholder="vd: Vé xem phim CGV, Hóa đơn Bánh xèo...">
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Loại</label>
+            <select class="form-input" id="modal-rec-type">
+              <option value="ticket" ${existingReceipt?.type === 'ticket' ? 'selected' : ''}>🎟️ Vé (Phim, máy bay, tham quan...)</option>
+              <option value="bill" ${existingReceipt?.type === 'bill' ? 'selected' : ''}>🧾 Hóa đơn (Ăn uống, khách sạn...)</option>
+              <option value="other" ${existingReceipt?.type === 'other' ? 'selected' : ''}>📌 Khác / Chứng từ</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Ngày</label>
+            <input type="date" class="form-input" id="modal-rec-date" value="${existingReceipt ? (existingReceipt.date || '') : ''}">
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Số tiền (VNĐ)</label>
-          <input type="number" class="form-input" id="modal-exp-amount">
+          <label class="form-label">Số tiền (VNĐ - tùy chọn)</label>
+          <input type="number" class="form-input" id="modal-rec-amount" value="${existingReceipt?.amount ? existingReceipt.amount : ''}" placeholder="Để trống nếu không cần tính tiền">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ghi chú</label>
+          <textarea class="form-textarea" id="modal-rec-note" placeholder="vd: Ghế F7-F8, Quán ăn ngon lắm...">${existingReceipt ? (existingReceipt.note || '') : ''}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">📸 Ảnh chụp vé / Hóa đơn</label>
+          <div class="act-photo-preview-container">
+            <div class="act-photo-preview" id="modal-rec-preview-box" title="Nhấn để chọn ảnh">
+              <span id="modal-rec-placeholder-text" style="font-size:0.8rem; font-weight:600; color:var(--color-primary); text-align:center; padding:4px;">📷 Tải ảnh vé/hóa đơn</span>
+              <img id="modal-rec-img-element" style="display:none;" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <button type="button" class="btn btn-sm btn-secondary" id="modal-rec-upload-btn">📁 Chọn ảnh từ máy</button>
+              <button type="button" class="btn btn-sm btn-danger" id="modal-rec-remove-btn" style="display:none;">🗑️ Xóa ảnh</button>
+              <input type="file" id="modal-rec-file-input" accept="image/*" style="display:none;" />
+            </div>
+          </div>
         </div>
       `,
-      onConfirm: () => {
-        const name = document.getElementById('modal-exp-name').value;
-        const amount = Number(document.getElementById('modal-exp-amount').value);
-        if (!name || !amount) return showToast('Vui lòng điền đủ thông tin', 'error');
+      onConfirm: async () => {
+        const title = document.getElementById('modal-rec-title').value.trim();
+        const type = document.getElementById('modal-rec-type').value;
+        const date = document.getElementById('modal-rec-date').value;
+        const amountStr = document.getElementById('modal-rec-amount').value;
+        const note = document.getElementById('modal-rec-note').value;
 
-        let dayExp = trip.expenses.find(e => e.dayId === dayId);
-        if (!dayExp) {
-          dayExp = { dayId, items: [] };
-          trip.expenses.push(dayExp);
+        if (!title) {
+          return showToast('Vui lòng nhập tên vé / hóa đơn', 'error');
         }
 
-        dayExp.items.push({
-          id: 'exp_' + Date.now(),
-          name,
-          amount
-        });
+        const amount = amountStr ? Number(amountStr) : null;
+        trip.receipts = trip.receipts || [];
+
+        let rec = existingReceipt;
+        if (!rec) {
+          rec = {
+            id: 'rec_' + Date.now(),
+            title, type, date, amount, note
+          };
+          trip.receipts.push(rec);
+        } else {
+          rec.title = title;
+          rec.type = type;
+          rec.date = date;
+          rec.amount = amount;
+          rec.note = note;
+        }
+
+        if (selectedFile) {
+          const mediaKey = `blob_${trip.id}_${rec.id}_${Date.now()}`;
+          try {
+            await MediaStore.save(mediaKey, selectedFile);
+            if (rec.photoKey && rec.photoKey !== mediaKey) {
+              await MediaStore.delete(rec.photoKey);
+            }
+            rec.photoKey = mediaKey;
+          } catch (e) {
+            console.error('Save receipt photo error:', e);
+            showToast('Lỗi khi lưu ảnh', 'error');
+          }
+        } else if (removeExistingPhoto) {
+          if (rec.photoKey) {
+            await MediaStore.delete(rec.photoKey);
+            delete rec.photoKey;
+          }
+        }
+
         TripStore.save(trip);
         hideModal();
-        renderExpenses();
+        renderReceipts();
+        showToast(existingReceipt ? 'Đã cập nhật vé/hóa đơn' : 'Đã thêm vé/hóa đơn mới! 🧾🎉');
       }
     });
+
+    const previewBox = document.getElementById('modal-rec-preview-box');
+    const placeholderText = document.getElementById('modal-rec-placeholder-text');
+    const imgEl = document.getElementById('modal-rec-img-element');
+    const uploadBtn = document.getElementById('modal-rec-upload-btn');
+    const removeBtn = document.getElementById('modal-rec-remove-btn');
+    const fileInput = document.getElementById('modal-rec-file-input');
+
+    const updatePreview = (src) => {
+      if (src) {
+        imgEl.src = src;
+        imgEl.style.display = 'block';
+        placeholderText.style.display = 'none';
+        removeBtn.style.display = 'inline-flex';
+      } else {
+        imgEl.src = '';
+        imgEl.style.display = 'none';
+        placeholderText.style.display = 'block';
+        removeBtn.style.display = 'none';
+      }
+    };
+
+    if (existingReceipt && existingReceipt.photoKey) {
+      try {
+        const blob = await MediaStore.get(existingReceipt.photoKey);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          objectUrls.push(url);
+          updatePreview(url);
+        }
+      } catch (e) {}
+    }
+
+    if (uploadBtn && fileInput && previewBox) {
+      uploadBtn.addEventListener('click', () => fileInput.click());
+      previewBox.addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          selectedFile = file;
+          removeExistingPhoto = false;
+          const url = URL.createObjectURL(file);
+          objectUrls.push(url);
+          updatePreview(url);
+        }
+      });
+
+      removeBtn.addEventListener('click', () => {
+        selectedFile = null;
+        removeExistingPhoto = true;
+        fileInput.value = '';
+        updatePreview(null);
+      });
+    }
   }
 }
 
@@ -859,16 +1031,16 @@ function openBoardingPassModal(trip) {
             </div>
             <div class="bp-item">
               <label>GHẾ NGỒI</label>
-              <span style="color:var(--color-primary);"></span>
+              <span style="color:var(--color-primary);">Cạnh Nhau 💕</span>
             </div>
             <div class="bp-item">
               <label>CỬA RA (GATE)</label>
-              <span style="color:var(--color-secondary);"></span>
+              <span style="color:var(--color-secondary);">Trái Tim 💕</span>
             </div>
           </div>
           <div class="bp-barcode-section">
             <div class="bp-barcode">||| | |||| | || |||| | |||</div>
-            <div class="bp-footer-quote">""</div>
+            <div class="bp-footer-quote">"Cùng em đi khắp thế gian 💕"</div>
           </div>
         </div>
 
@@ -970,8 +1142,8 @@ function downloadBoardingPassAsCanvas(trip) {
 
   drawField('HÀNH KHÁCH', 'Lynsey & Vak 💕', 48, 320);
   drawField('NGÀY BAY', startDate, 340, 320);
-  drawField('GHẾ NGỒI', '', 48, 410, '#FF6B9D');
-  drawField('CỬA RA (GATE)', '', 340, 410, '#C084FC');
+  drawField('GHẾ NGỒI', 'Cạnh Nhau 💕', 48, 410, '#FF6B9D');
+  drawField('CỬA RA (GATE)', 'Trái Tim 💕', 340, 410, '#C084FC');
   drawField('GIỜ LÊN MÁY BAY', 'Trọn Đời ✨', 48, 500);
   drawField('HẠNG VÉ', 'Hạnh Phúc Nhất 💖', 340, 500);
 
@@ -988,7 +1160,7 @@ function downloadBoardingPassAsCanvas(trip) {
 
   ctx.font = 'bold 15px Quicksand, sans-serif';
   ctx.fillStyle = '#FF6B9D';
-  ctx.fillText('""', 300, 670);
+  ctx.fillText('"Cùng em đi khắp thế gian 💕"', 300, 670);
 
   // Download
   const link = document.createElement('a');

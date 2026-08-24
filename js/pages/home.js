@@ -1,12 +1,13 @@
-import { TripStore, MediaStore, SettingsStore, TimeCapsuleStore, VIETNAM_PROVINCES, getVisitedStats, exportAllData, importAllData } from '../store.js';
+import { TripStore, MediaStore, SettingsStore, WheelStore, exportAllData, importAllData } from '../store.js';
 import { showModal, hideModal, showConfirm, showToast } from '../app.js';
 
-let currentHomeTab = 'trips'; // 'trips', 'map', 'capsule', 'widget'
+let currentHomeTab = 'trips'; // 'trips', 'wheel', 'widget'
+let currentWheelRotation = 0;
+let isWheelSpinning = false;
 
 export function renderHome(container) {
   const settings = SettingsStore.get();
   const trips = TripStore.getAll();
-  const capsules = TimeCapsuleStore.getAll();
 
   // Calculate Love Days
   const today = new Date();
@@ -33,7 +34,7 @@ export function renderHome(container) {
   container.innerHTML = `
     <div class="app-header">
       <h1>${settings.coupleTitle || 'Lynsey & Vak Trip 😋'}</h1>
-      <p></p>
+      <p>💕 Lưu giữ mọi hành trình và khoảnh khắc yêu thương 💕</p>
       
       <div class="import-export-bar mt-16">
         <button class="btn btn-secondary btn-sm" id="btn-import">📥 Nhập dữ liệu</button>
@@ -47,7 +48,7 @@ export function renderHome(container) {
       <div class="love-card">
         <div class="love-card-icon">💖</div>
         <div class="love-card-body">
-          <div class="love-card-title">Love days</div>
+          <div class="love-card-title">BÊN NHAU ĐƯỢC</div>
           <div class="love-card-val">${loveDays} <small>ngày</small></div>
           <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-top:2px;">Kỷ niệm: ${formatDate(settings.anniversaryDate)}</div>
         </div>
@@ -69,11 +70,8 @@ export function renderHome(container) {
       <button class="home-section-btn ${currentHomeTab === 'trips' ? 'active' : ''}" data-tab="trips">
         ✈️ Chuyến đi (${trips.length})
       </button>
-      <button class="home-section-btn ${currentHomeTab === 'map' ? 'active' : ''}" data-tab="map">
-        🗺️ Bản đồ dấu chân
-      </button>
-      <button class="home-section-btn ${currentHomeTab === 'capsule' ? 'active' : ''}" data-tab="capsule">
-        💌 Hộp thư bí mật (${capsules.length})
+      <button class="home-section-btn ${currentHomeTab === 'wheel' ? 'active' : ''}" data-tab="wheel">
+        🎰 Vòng quay quyết định
       </button>
       <button class="home-section-btn ${currentHomeTab === 'widget' ? 'active' : ''}" data-tab="widget">
         📱 Widget iPhone
@@ -138,10 +136,8 @@ export function renderHome(container) {
   // Render Sub-Views based on currentHomeTab
   if (currentHomeTab === 'trips') {
     renderTripsTab(mainContent);
-  } else if (currentHomeTab === 'map') {
-    renderMapTab(mainContent);
-  } else if (currentHomeTab === 'capsule') {
-    renderCapsuleTab(mainContent);
+  } else if (currentHomeTab === 'wheel') {
+    renderWheelTab(mainContent);
   } else if (currentHomeTab === 'widget') {
     renderWidgetTab(mainContent);
   }
@@ -231,198 +227,263 @@ export function renderHome(container) {
     });
   }
 
-  function renderMapTab(target) {
-    const stats = getVisitedStats(trips);
-    const { visitedMap, visitedCount, totalCount, percentage } = stats;
+  function renderWheelTab(target) {
+    let wheelItems = WheelStore.get();
+    const activeItems = () => wheelItems.filter(item => item.active !== false);
 
-    const renderProvincesByRegion = (region) => {
-      return VIETNAM_PROVINCES
-        .filter(p => p.region === region)
-        .map(p => {
-          const count = visitedMap[p.id] || 0;
-          const isVisited = count > 0;
-          return `
-            <div class="province-badge ${isVisited ? 'visited' : ''}" data-id="${p.id}" data-name="${p.name}">
-              <span class="province-name">${isVisited ? '🌟 ' : ''}${p.name}</span>
-              ${isVisited ? `<span class="province-trip-count">${count} chuyến</span>` : '<span style="font-size:0.8rem; opacity:0.4;">+</span>'}
+    target.innerHTML = `
+      <div class="wheel-container slide-up">
+        <div class="wheel-card">
+          <h2 style="color:var(--color-primary); font-size:1.35rem; font-weight:700; margin-bottom:4px;">🎰 Hôm Nay Ăn Gì / Đi Đâu?</h2>
+          <p style="color:var(--color-text-secondary); font-size:0.88rem; margin-bottom:20px;">Bấm QUAY để chiếc vòng quyết định giúp hai bạn nhé!</p>
+
+          <div class="wheel-canvas-wrap">
+            <div class="wheel-pointer"></div>
+            <canvas id="wheel-canvas" width="640" height="640"></canvas>
+            <button class="wheel-spin-btn" id="btn-spin-wheel">QUAY</button>
+          </div>
+
+          <div id="wheel-result-banner" style="min-height: 28px; font-weight: 700; font-size: 1.15rem; color: var(--color-primary);"></div>
+        </div>
+
+        <div class="wheel-options-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <h3 style="font-size:1.05rem; font-weight:700; color:var(--color-text);">📝 Danh Sách Lựa Chọn</h3>
+            <span style="font-size:0.8rem; color:var(--color-text-secondary);">(Chạm để bật/tắt - ✕ để xóa)</span>
+          </div>
+
+          <div class="form-row mt-16" style="display:flex; gap:8px;">
+            <input type="text" class="form-input" id="wheel-new-input" placeholder="Nhập món ăn hoặc địa điểm mới..." style="flex:1;">
+            <button class="btn btn-primary" id="btn-add-wheel-item">+ Thêm</button>
+          </div>
+
+          <div class="wheel-options-list" id="wheel-chips-list"></div>
+
+          <div style="margin-top:14px; border-top: 1px dashed rgba(255,107,157,0.15); padding-top:12px;">
+            <div style="font-size:0.8rem; font-weight:700; color:var(--color-text-secondary); margin-bottom:6px;">🎯 Bộ mẫu nhanh:</div>
+            <div class="wheel-presets">
+              <button class="btn btn-sm btn-secondary" id="preset-food">🍜 Món ăn</button>
+              <button class="btn btn-sm btn-secondary" id="preset-drink">☕ Cafe / Trà sữa</button>
+              <button class="btn btn-sm btn-secondary" id="preset-play">🎡 Đi chơi / Hẹn hò</button>
+              <button class="btn btn-sm btn-secondary" id="preset-default">🔄 Mặc định</button>
             </div>
-          `;
-        }).join('');
-    };
-
-    target.innerHTML = `
-      <div class="map-summary-card slide-up">
-        <h2 style="font-size: 1.4rem; color: var(--color-primary); margin-bottom: 6px;">🗺️ Scratch Map</h2>
-        <p style="color: var(--color-text-secondary); font-size: 0.95rem;">
-          Đã đi <strong>${visitedCount}/${totalCount}</strong> tỉnh thành Việt Nam 🇻🇳
-        </p>
-        <div class="map-progress-bar-container">
-          <div class="map-progress-fill" style="width: ${percentage}%;"></div>
+          </div>
         </div>
-        <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-secondary);">${percentage}% Đất nước</div>
-      </div>
-
-      <div class="province-region-title">🌿 Miền Bắc</div>
-      <div class="province-grid">
-        ${renderProvincesByRegion('north')}
-      </div>
-
-      <div class="province-region-title">🌊 Miền Trung & Tây Nguyên</div>
-      <div class="province-grid">
-        ${renderProvincesByRegion('central')}
-      </div>
-
-      <div class="province-region-title">☀️ Miền Nam</div>
-      <div class="province-grid">
-        ${renderProvincesByRegion('south')}
       </div>
     `;
 
-    // Click to toggle visited province
-    target.querySelectorAll('.province-badge').forEach(badge => {
-      badge.addEventListener('click', async () => {
-        const id = badge.getAttribute('data-id');
-        const name = badge.getAttribute('data-name');
-        const currentSettings = SettingsStore.get();
-        let customList = currentSettings.customVisitedProvinces || [];
+    const canvas = target.querySelector('#wheel-canvas');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = target.querySelector('#btn-spin-wheel');
+    const chipsList = target.querySelector('#wheel-chips-list');
+    const addInput = target.querySelector('#wheel-new-input');
+    const addBtn = target.querySelector('#btn-add-wheel-item');
+    const resultBanner = target.querySelector('#wheel-result-banner');
 
-        if (customList.includes(id)) {
-          customList = customList.filter(x => x !== id);
-          showToast(`Đã bỏ đánh dấu ${name}`);
-        } else {
-          customList.push(id);
-          showToast(`Đã thắp sáng ${name}! 🎉`);
-        }
+    const sliceColors = [
+      '#FF8BA7', '#38BDF8', '#FBBF24', '#4ADE80', 
+      '#C084FC', '#FB7185', '#34D399', '#A78BFA',
+      '#F472B6', '#60A5FA', '#F59E0B', '#10B981'
+    ];
 
-        currentSettings.customVisitedProvinces = customList;
-        await SettingsStore.save(currentSettings);
-        renderHome(container);
-      });
-    });
-  }
+    function drawWheel() {
+      const items = activeItems();
+      const numSlices = items.length;
+      ctx.clearRect(0, 0, 640, 640);
 
-  function renderCapsuleTab(target) {
-    const list = TimeCapsuleStore.getAll();
-
-    target.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-        <div>
-          <h2 style="font-size:1.3rem; color:var(--color-primary); font-weight:700;">💌 Thư Bí Mật</h2>
-          <p style="color:var(--color-text-secondary); font-size:0.88rem;">Viết lời nhắn hẹn giờ mở khóa cho đối phương</p>
-        </div>
-        <button class="btn btn-primary btn-sm" id="btn-add-capsule">+ Tạo thư mới</button>
-      </div>
-
-      <div class="capsule-grid" id="capsule-list-content"></div>
-    `;
-
-    document.getElementById('btn-add-capsule')?.addEventListener('click', () => openCapsuleModal());
-
-    const grid = target.querySelector('#capsule-list-content');
-    if (list.length === 0) {
-      grid.innerHTML = `
-        <div class="empty-state" style="grid-column: 1 / -1;">
-          <div class="empty-state-icon">💌</div>
-          <h3 class="empty-state-title">Chưa có Thư nào</h3>
-          <p class="empty-state-text"></p>
-          <button class="btn btn-primary mt-16" id="btn-add-first-capsule">+ Tạo thư mới ngay</button>
-        </div>
-      `;
-      document.getElementById('btn-add-first-capsule')?.addEventListener('click', () => openCapsuleModal());
-      return;
-    }
-
-    const now = new Date();
-
-    list.forEach((cap, idx) => {
-      const unlockDate = new Date(cap.unlockDate);
-      const isLocked = now < unlockDate;
-      const card = document.createElement('div');
-      card.className = `capsule-card clay-card slide-up ${isLocked ? 'locked' : 'unlocked'}`;
-      card.style.animationDelay = `${idx * 0.1}s`;
-
-      let timerHtml = '';
-      if (isLocked) {
-        const diffMs = unlockDate - now;
-        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-        const mins = Math.floor((diffMs / (1000 * 60)) % 60);
-        timerHtml = `<div class="capsule-timer">🔒 Mở khóa sau: ${days}d ${hours}h ${mins}m</div>`;
-      } else {
-        timerHtml = `<div class="capsule-timer" style="color:var(--color-success); background:rgba(74,222,128,0.15);">🎉 ĐÃ MỞ KHÓA!</div>`;
+      if (numSlices === 0) {
+        ctx.fillStyle = '#E2E8F0';
+        ctx.beginPath();
+        ctx.arc(320, 320, 300, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#64748B';
+        ctx.font = 'bold 24px Quicksand, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Hãy thêm lựa chọn!', 320, 325);
+        return;
       }
 
-      card.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span class="badge ${isLocked ? 'badge-primary' : 'badge-primary'}" style="background:var(--bg-secondary);">Từ: ${cap.sender || 'Người ấy'}</span>
-          <button class="btn-icon btn-sm btn-delete-capsule" data-id="${cap.id}">🗑️</button>
-        </div>
-        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:4px;">${cap.title || 'Lời nhắn bí mật'}</h3>
-        <div style="font-size:0.75rem; color:var(--color-text-secondary);">Hẹn mở: ${formatDate(cap.unlockDate)}</div>
-        ${timerHtml}
-        <button class="btn ${isLocked ? 'btn-secondary' : 'btn-primary'} btn-sm mt-16" style="width:100%;" id="btn-view-capsule-${cap.id}">
-          ${isLocked ? '🔒 Xem thời gian' : '💌 Đọc thư ngay'}
-        </button>
-      `;
+      const arc = (Math.PI * 2) / numSlices;
 
-      card.querySelector('.btn-delete-capsule').addEventListener('click', (e) => {
-        e.stopPropagation();
-        showConfirm({
-          message: 'Bạn có chắc muốn xóa hộp thư này?',
-          onConfirm: async () => {
-            await TimeCapsuleStore.delete(cap.id);
-            if (cap.photoKey) await MediaStore.delete(cap.photoKey);
-            renderHome(container);
-            showToast('Đã xóa hộp thư');
-          }
+      for (let i = 0; i < numSlices; i++) {
+        const angle = i * arc;
+        ctx.fillStyle = sliceColors[i % sliceColors.length];
+
+        ctx.beginPath();
+        ctx.moveTo(320, 320);
+        ctx.arc(320, 320, 300, angle, angle + arc);
+        ctx.lineTo(320, 320);
+        ctx.fill();
+
+        // Border line between slices
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Text
+        ctx.save();
+        ctx.translate(320, 320);
+        ctx.rotate(angle + arc / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 22px Quicksand, sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 4;
+        
+        let text = items[i].text;
+        if (text.length > 14) text = text.slice(0, 13) + '...';
+        ctx.fillText(text, 270, 8);
+        ctx.restore();
+      }
+
+      // Outer ring
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(320, 320, 300, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    function renderChips() {
+      chipsList.innerHTML = wheelItems.map((item, idx) => `
+        <div class="wheel-chip ${item.active === false ? 'inactive' : ''}" data-idx="${idx}">
+          <span class="wheel-chip-text" style="cursor:pointer;">${item.text}</span>
+          <span class="wheel-chip-del" data-id="${item.id}" title="Xóa">✕</span>
+        </div>
+      `).join('');
+
+      chipsList.querySelectorAll('.wheel-chip-text').forEach((span) => {
+        span.addEventListener('click', async (e) => {
+          const idx = e.target.closest('.wheel-chip').getAttribute('data-idx');
+          wheelItems[idx].active = wheelItems[idx].active === false ? true : false;
+          await WheelStore.save(wheelItems);
+          drawWheel();
+          renderChips();
         });
       });
 
-      card.querySelector(`#btn-view-capsule-${cap.id}`).addEventListener('click', async () => {
-        if (isLocked) {
-          showModal({
-            title: '🔒 Hộp thư đang được khóa',
-            contentHTML: `
-              <div style="text-align:center; padding: 12px 0;">
-                <div style="font-size:3.5rem; margin-bottom:12px;">🔐</div>
-                <p style="font-weight:600; font-size:1rem; color:var(--color-text);">Bức thư từ <strong>${cap.sender}</strong> đang được giữ kín.</p>
-                <p style="color:var(--color-text-secondary); margin-top:6px; font-size:0.9rem;">Sẽ tự động mở vào đúng ngày <strong>${formatDate(cap.unlockDate)}</strong>.</p>
-                <div class="capsule-timer mt-16">${timerHtml}</div>
-              </div>
-            `,
-            showFooter: false
-          });
-        } else {
-          // Unlocked
-          let photoHtml = '';
-          if (cap.photoKey) {
-            const blob = await MediaStore.get(cap.photoKey);
-            if (blob) {
-              const url = URL.createObjectURL(blob);
-              photoHtml = `<img src="${url}" style="width:100%; max-height:260px; object-fit:cover; border-radius:var(--radius-sm); margin-top:14px; box-shadow:var(--shadow-clay);" />`;
-            }
-          }
-
-          showModal({
-            title: `💌 Bức thư từ ${cap.sender}`,
-            contentHTML: `
-              <div style="padding: 6px 0;">
-                <h3 style="color:var(--color-primary); font-size:1.2rem; margin-bottom:8px;">${cap.title}</h3>
-                <div style="background:var(--bg-main); padding:16px; border-radius:var(--radius-sm); font-size:0.95rem; line-height:1.6; white-space:pre-wrap; box-shadow:var(--shadow-clay-inset);">
-                  ${cap.message || ''}
-                </div>
-                ${photoHtml}
-                <div style="text-align:right; font-size:0.75rem; color:var(--color-text-secondary); margin-top:10px;">
-                  Tạo ngày: ${formatDate(cap.createdAt)}
-                </div>
-              </div>
-            `,
-            showFooter: false
-          });
-        }
+      chipsList.querySelectorAll('.wheel-chip-del').forEach((delBtn) => {
+        delBtn.addEventListener('click', async (e) => {
+          const id = delBtn.getAttribute('data-id');
+          wheelItems = wheelItems.filter(i => i.id !== id);
+          await WheelStore.save(wheelItems);
+          drawWheel();
+          renderChips();
+          showToast('Đã xóa lựa chọn');
+        });
       });
+    }
 
-      grid.appendChild(card);
+    drawWheel();
+    renderChips();
+
+    // Add item
+    const handleAdd = async () => {
+      const val = addInput.value.trim();
+      if (!val) return;
+      wheelItems.push({ id: 'opt_' + Date.now(), text: val, active: true });
+      await WheelStore.save(wheelItems);
+      addInput.value = '';
+      drawWheel();
+      renderChips();
+      showToast(`Đã thêm "${val}" vào vòng quay! 🎉`);
+    };
+
+    addBtn.addEventListener('click', handleAdd);
+    addInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAdd();
+    });
+
+    // Spin function
+    spinBtn.addEventListener('click', () => {
+      const items = activeItems();
+      if (items.length < 2) {
+        return showToast('Cần ít nhất 2 lựa chọn đang bật để quay nhé!', 'error');
+      }
+      if (isWheelSpinning) return;
+
+      isWheelSpinning = true;
+      resultBanner.innerText = 'Đang quay... 🌀';
+
+      const numSlices = items.length;
+      const sliceAngle = 360 / numSlices;
+      const winningIndex = Math.floor(Math.random() * numSlices);
+      
+      // Calculate target rotation so winning slice lands at pointer (top: 270 deg or -90 deg)
+      const targetSliceCenter = (winningIndex * sliceAngle) + (sliceAngle / 2);
+      const extraSpins = 5 * 360; // 5 full rotations
+      const targetAngle = 270 - targetSliceCenter;
+      
+      currentWheelRotation += extraSpins + (targetAngle - (currentWheelRotation % 360));
+      if (currentWheelRotation < 0) currentWheelRotation += 3600;
+
+      canvas.style.transform = `rotate(${currentWheelRotation}deg)`;
+
+      setTimeout(() => {
+        isWheelSpinning = false;
+        const winner = items[winningIndex].text;
+        resultBanner.innerHTML = `🎉 Quyết định hôm nay: <span style="color:var(--color-primary-dark); font-size:1.3rem;">${winner}</span>! 💕`;
+        showModal({
+          title: '🎉 Vòng Quay Đã Chọn!',
+          contentHTML: `
+            <div style="text-align:center; padding:16px 0;">
+              <div style="font-size:3.5rem; margin-bottom:10px;">🥳✨</div>
+              <p style="font-size:1rem; color:var(--color-text-secondary); margin-bottom:6px;">Lựa chọn tuyệt vời cho hai bạn hôm nay là:</p>
+              <div style="font-size:1.6rem; font-weight:700; color:var(--color-primary); background:var(--bg-main); padding:14px 20px; border-radius:var(--radius-md); box-shadow:var(--shadow-clay-inset); margin:14px 0;">
+                ${winner}
+              </div>
+              <p style="font-size:0.9rem; color:var(--color-secondary); font-weight:600;">Chúc Lynsey & Vak có một buổi hẹn hò thật vui! 💕</p>
+            </div>
+          `,
+          showFooter: false
+        });
+      }, 4000);
+    });
+
+    // Presets
+    const setPreset = async (presetList) => {
+      wheelItems = presetList;
+      await WheelStore.save(wheelItems);
+      drawWheel();
+      renderChips();
+      showToast('Đã nạp danh sách mẫu! 🎉');
+    };
+
+    target.querySelector('#preset-food')?.addEventListener('click', () => {
+      setPreset([
+        { id: 'f1', text: '🍜 Bún bò Huế', active: true },
+        { id: 'f2', text: '🥩 Lẩu Haidilao / BBQ', active: true },
+        { id: 'f3', text: '🍕 Pizza 4P\'s', active: true },
+        { id: 'f4', text: '🍚 Cơm tấm sườn bì', active: true },
+        { id: 'f5', text: '🥞 Bánh xèo miền Tây', active: true },
+        { id: 'f6', text: '🍣 Sushi / Đồ Nhật', active: true },
+        { id: 'f7', text: '🍗 Gà rán / Burger', active: true }
+      ]);
+    });
+
+    target.querySelector('#preset-drink')?.addEventListener('click', () => {
+      setPreset([
+        { id: 'd1', text: '🧋 Trà sữa Koi Thé / Phê La', active: true },
+        { id: 'd2', text: '☕ Cà phê trứng / Muối', active: true },
+        { id: 'd3', text: '🍹 Trà trái cây tươi', active: true },
+        { id: 'd4', text: '🍨 Kem Bơ / Bingsu', active: true },
+        { id: 'd5', text: '🥥 Nước dừa / Sinh tố', active: true }
+      ]);
+    });
+
+    target.querySelector('#preset-play')?.addEventListener('click', () => {
+      setPreset([
+        { id: 'p1', text: '🎬 Xem phim rạp CGV', active: true },
+        { id: 'p2', text: '🚶 Đi dạo phố / Hồ Tây', active: true },
+        { id: 'p3', text: '🎳 Chơi Bowling / Gắp gấu', active: true },
+        { id: 'p4', text: '📸 Đi chụp ảnh Photobooth', active: true },
+        { id: 'p5', text: '🛍️ Đi siêu thị nấu ăn', active: true },
+        { id: 'p6', text: '🎨 Vẽ tranh / Tô tượng', active: true }
+      ]);
+    });
+
+    target.querySelector('#preset-default')?.addEventListener('click', () => {
+      setPreset(WheelStore.getDefaults());
     });
   }
 
@@ -548,7 +609,7 @@ async function createWidget() {
     loveCard.borderColor = new Color("#FFE4EE");
     loveCard.borderWidth = 1;
 
-    const lTitle = loveCard.addText("💖 LOVE DAYS");
+    const lTitle = loveCard.addText("💖 BÊN NHAU ĐƯỢC");
     lTitle.font = Font.boldSystemFont(9);
     lTitle.textColor = new Color("#FF6B9D");
 
@@ -664,7 +725,7 @@ async function createWidget() {
       tf.font = Font.boldSystemFont(14);
       tf.textColor = new Color("#1E1B4B");
     }
-    const nf = foot.addText("Lynsey & Vak 💕");
+    const nf = foot.addText("Lynsey & Vak 💕 - Cùng em đi khắp thế gian");
     nf.font = Font.systemFont(12);
     nf.textColor = new Color("#FF6B9D");
   }
@@ -712,7 +773,7 @@ Script.complete();`;
           <input type="text" class="form-input" id="setting-title" value="${s.coupleTitle || 'Lynsey & Vak 💕'}">
         </div>
         <div class="form-group">
-          <label class="form-label">Ngày bắt đầu</label>
+          <label class="form-label">Ngày bắt đầu yêu / Kỷ niệm</label>
           <input type="date" class="form-input" id="setting-anni-date" value="${s.anniversaryDate || '2024-01-01'}">
         </div>
         <div class="form-row">
@@ -741,76 +802,6 @@ Script.complete();`;
         hideModal();
         renderHome(container);
         showToast('Đã lưu thông tin cài đặt! 💕');
-      }
-    });
-  }
-
-  function openCapsuleModal() {
-    const s = SettingsStore.get();
-    let selectedFile = null;
-
-    showModal({
-      title: '💌 Tạo Thư Mới',
-      contentHTML: `
-        <div class="form-group">
-          <label class="form-label">Người gửi</label>
-          <select class="form-input" id="capsule-sender">
-            <option value="${s.user1 || 'Vak'}">${s.user1 || 'Vak'}</option>
-            <option value="${s.user2 || 'Lynsey'}">${s.user2 || 'Lynsey'}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tiêu đề thư</label>
-          <input type="text" class="form-input" id="capsule-title" placeholder="vd: Mừng sinh nhật em, Lời nhắn bí mật...">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Ngày hẹn mở khóa</label>
-          <input type="date" class="form-input" id="capsule-date">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Nội dung bức thư</label>
-          <textarea class="form-textarea" id="capsule-msg" placeholder="Viết những lời ngọt ngào tại đây..." style="min-height:120px;"></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">📸 Ảnh đính kèm bí mật (tùy chọn)</label>
-          <input type="file" id="capsule-photo" accept="image/*" class="form-input" />
-        </div>
-      `,
-      onConfirm: async () => {
-        const sender = document.getElementById('capsule-sender').value;
-        const title = document.getElementById('capsule-title').value;
-        const unlockDate = document.getElementById('capsule-date').value;
-        const message = document.getElementById('capsule-msg').value;
-        const photoInput = document.getElementById('capsule-photo');
-
-        if (!title.trim() || !unlockDate || !message.trim()) {
-          return showToast('Vui lòng điền đủ tiêu đề, ngày mở và nội dung', 'error');
-        }
-
-        const capsuleId = 'cap_' + Date.now();
-        let photoKey = null;
-
-        if (photoInput && photoInput.files[0]) {
-          photoKey = `blob_cap_${capsuleId}_${Date.now()}`;
-          try {
-            await MediaStore.save(photoKey, photoInput.files[0]);
-          } catch (e) { }
-        }
-
-        const newCapsule = {
-          id: capsuleId,
-          sender,
-          title,
-          unlockDate,
-          message,
-          photoKey,
-          createdAt: new Date().toISOString()
-        };
-
-        await TimeCapsuleStore.save(newCapsule);
-        hideModal();
-        renderHome(container);
-        showToast('Đã cất giữ Thư bí mật! 🔒✨');
       }
     });
   }
@@ -853,7 +844,7 @@ Script.complete();`;
         const trip = existingTrip || {
           id: 'trip_' + Date.now(),
           days: [],
-          expenses: [],
+          receipts: [],
           media: [],
           penalties: { bungTran: 0, troiTay: 0, k: 0 },
           note: ''
