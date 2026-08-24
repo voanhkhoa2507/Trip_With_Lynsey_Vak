@@ -71,7 +71,7 @@ export function renderHome(container) {
         ✈️ Chuyến đi (${trips.length})
       </button>
       <button class="home-section-btn ${currentHomeTab === 'wheel' ? 'active' : ''}" data-tab="wheel">
-        🎰 Vòng quay quyết định
+        🎰 Vòng quay
       </button>
       <button class="home-section-btn ${currentHomeTab === 'widget' ? 'active' : ''}" data-tab="widget">
         📱 Widget iPhone
@@ -281,7 +281,7 @@ export function renderHome(container) {
     const resultBanner = target.querySelector('#wheel-result-banner');
 
     const sliceColors = [
-      '#FF8BA7', '#38BDF8', '#FBBF24', '#4ADE80', 
+      '#FF8BA7', '#38BDF8', '#FBBF24', '#4ADE80',
       '#C084FC', '#FB7185', '#34D399', '#A78BFA',
       '#F472B6', '#60A5FA', '#F59E0B', '#10B981'
     ];
@@ -329,7 +329,7 @@ export function renderHome(container) {
         ctx.font = 'bold 22px Quicksand, sans-serif';
         ctx.shadowColor = 'rgba(0,0,0,0.3)';
         ctx.shadowBlur = 4;
-        
+
         let text = items[i].text;
         if (text.length > 14) text = text.slice(0, 13) + '...';
         ctx.fillText(text, 270, 8);
@@ -408,12 +408,12 @@ export function renderHome(container) {
       const numSlices = items.length;
       const sliceAngle = 360 / numSlices;
       const winningIndex = Math.floor(Math.random() * numSlices);
-      
+
       // Calculate target rotation so winning slice lands at pointer (top: 270 deg or -90 deg)
       const targetSliceCenter = (winningIndex * sliceAngle) + (sliceAngle / 2);
       const extraSpins = 5 * 360; // 5 full rotations
       const targetAngle = 270 - targetSliceCenter;
-      
+
       currentWheelRotation += extraSpins + (targetAngle - (currentWheelRotation % 360));
       if (currentWheelRotation < 0) currentWheelRotation += 3600;
 
