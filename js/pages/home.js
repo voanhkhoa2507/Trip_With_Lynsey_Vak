@@ -235,7 +235,7 @@ export function renderHome(container) {
       <div class="wheel-container slide-up">
         <div class="wheel-card">
           <h2 style="color:var(--color-primary); font-size:1.35rem; font-weight:700; margin-bottom:4px;">🎰 Hôm Nay Ăn Gì / Đi Đâu?</h2>
-          <p style="color:var(--color-text-secondary); font-size:0.88rem; margin-bottom:20px;">Bấm QUAY để chiếc vòng quyết định giúp hai bạn nhé!</p>
+          <p style="color:var(--color-text-secondary); font-size:0.88rem; margin-bottom:20px;">Bấm QUAY!</p>
 
           <div class="wheel-canvas-wrap">
             <div class="wheel-pointer"></div>
