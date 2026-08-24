@@ -483,7 +483,7 @@ export function renderTrip(container, tripId) {
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
         <div>
           <h3 style="font-size:1.2rem; font-weight:700; color:var(--color-primary);">🧾 Vé & Hóa Đơn Kỷ Niệm (${receipts.length})</h3>
-          <p style="font-size:0.85rem; color:var(--color-text-secondary);">Lưu giữ vé xem phim, vé máy bay, hóa đơn ăn uống, khách sạn...</p>
+          <p style="font-size:0.85rem; color:var(--color-text-secondary);">Lưu giữ vé xem phim, vé máy bay, hóa đơn ăn uống,...</p>
         </div>
         <button class="btn btn-primary btn-sm" id="btn-add-receipt">+ Thêm vé / hóa đơn</button>
       </div>
@@ -494,7 +494,7 @@ export function renderTrip(container, tripId) {
         <div class="empty-state">
           <div class="empty-state-icon">🎟️</div>
           <h3 class="empty-state-title">Chưa có vé hoặc hóa đơn nào</h3>
-          <p class="empty-state-text">Hãy chụp và tải ảnh vé xem phim, vé tham quan, hóa đơn kỷ niệm vào đây nhé!</p>
+          <p class="empty-state-text"></p>
           <button class="btn btn-primary mt-16" id="btn-add-first-receipt">+ Thêm vé / hóa đơn đầu tiên</button>
         </div>
       `;
@@ -955,7 +955,7 @@ export function renderTrip(container, tripId) {
           objectUrls.push(url);
           updatePreview(url);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (uploadBtn && fileInput && previewBox) {
