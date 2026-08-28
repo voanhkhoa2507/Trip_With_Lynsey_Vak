@@ -84,7 +84,7 @@ export function renderTrip(container, tripId) {
             <input type="number" min="0" class="penalty-input" data-key="troiTay" value="${trip.penalties?.troiTay ?? trip.penalties?.cuDau ?? 0}">
           </div>
           <div class="penalty-item">
-            <span class="penalty-label">💸 K</span>
+            <span class="penalty-label">🤔 K</span>
             <input type="number" min="0" class="penalty-input" data-key="k" value="${trip.penalties?.k ?? 0}">
           </div>
         </div>
@@ -1142,8 +1142,8 @@ function downloadBoardingPassAsCanvas(trip) {
 
   drawField('HÀNH KHÁCH', 'Lynsey & Vak 💕', 48, 320);
   drawField('NGÀY BAY', startDate, 340, 320);
-  drawField('GHẾ NGỒI', 'Cạnh Nhau 💕', 48, 410, '#FF6B9D');
-  drawField('CỬA RA (GATE)', 'Trái Tim 💕', 340, 410, '#C084FC');
+  drawField('GHẾ NGỒI', '', 48, 410, '#FF6B9D');
+  drawField('CỬA RA (GATE)', '', 340, 410, '#C084FC');
   drawField('GIỜ LÊN MÁY BAY', 'Trọn Đời ✨', 48, 500);
   drawField('HẠNG VÉ', 'Hạnh Phúc Nhất 💖', 340, 500);
 
@@ -1160,7 +1160,7 @@ function downloadBoardingPassAsCanvas(trip) {
 
   ctx.font = 'bold 15px Quicksand, sans-serif';
   ctx.fillStyle = '#FF6B9D';
-  ctx.fillText('"Cùng em đi khắp thế gian 💕"', 300, 670);
+  ctx.fillText('', 300, 670);
 
   // Download
   const link = document.createElement('a');
