@@ -472,6 +472,7 @@ body {
   padding: 24px;
   transition: var(--transition);
   border: 1px solid rgba(255,107,157,0.08);
+  min-width: 0; /* Fix flex/grid blowout */
 }
 
 .day-card-header {
@@ -561,6 +562,8 @@ body {
   border: 1px solid rgba(255, 107, 157, 0.1);
   overflow-x: auto;
   overflow-y: hidden;
+  width: 100%;
+  max-width: 100%;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
 }
