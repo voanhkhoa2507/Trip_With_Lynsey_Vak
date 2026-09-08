@@ -1031,11 +1031,11 @@ function openBoardingPassModal(trip) {
             </div>
             <div class="bp-item">
               <label>GHẾ NGỒI</label>
-              <span style="color:var(--color-primary);">Cạnh Nhau 💕</span>
+              <span style="color:var(--color-primary);">33-C 💕</span>
             </div>
             <div class="bp-item">
               <label>CỬA RA (GATE)</label>
-              <span style="color:var(--color-secondary);">Trái Tim 💕</span>
+              <span style="color:var(--color-secondary);">33-D 💕</span>
             </div>
           </div>
           <div class="bp-barcode-section">
