@@ -1,6 +1,6 @@
 // Firebase SDK Imports (ES Modules from CDN)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -230,14 +230,34 @@ export const MediaStore = {
 
   async get(key) {
     await this.init();
-    return new Promise((resolve, reject) => {
+    let localBlob = await new Promise((resolve, reject) => {
       const transaction = dbInstance.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(key);
 
       request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve(null);
     });
+
+    if (localBlob) return localBlob;
+
+    // Lazy load from Firestore if not local
+    try {
+      const docSnap = await getDoc(doc(db, "media", key));
+      if (docSnap.exists()) {
+        const { type, data } = docSnap.data();
+        if (data) {
+          const blob = base64ToBlob(data, type);
+          // Save locally for next time
+          const transaction = dbInstance.transaction([STORE_NAME], 'readwrite');
+          transaction.objectStore(STORE_NAME).put(blob, key);
+          return blob;
+        }
+      }
+    } catch (e) {
+      console.error("Lazy load media error:", e);
+    }
+    return null;
   },
 
   async delete(key) {

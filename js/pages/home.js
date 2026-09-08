@@ -48,7 +48,7 @@ export function renderHome(container) {
       <div class="love-card">
         <div class="love-card-icon">💖</div>
         <div class="love-card-body">
-          <div class="love-card-title">BÊN NHAU ĐƯỢC</div>
+          <div class="love-card-title">TOGETHER</div>
           <div class="love-card-val">${loveDays} <small>ngày</small></div>
           <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-top:2px;">Kỷ niệm: ${formatDate(settings.anniversaryDate)}</div>
         </div>
@@ -609,7 +609,7 @@ async function createWidget() {
     loveCard.borderColor = new Color("#FFE4EE");
     loveCard.borderWidth = 1;
 
-    const lTitle = loveCard.addText("💖 BÊN NHAU ĐƯỢC");
+    const lTitle = loveCard.addText("💖 TOGETHER");
     lTitle.font = Font.boldSystemFont(9);
     lTitle.textColor = new Color("#FF6B9D");
 
