@@ -562,17 +562,33 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .polaroid-clothesline-container::-webkit-scrollbar {
-  height: 4px;
+  height: 6px;
 }
 .polaroid-clothesline-container::-webkit-scrollbar-thumb {
   background: var(--color-primary-light);
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
-.clothesline-wire {
+/* Remove old wire that was limited to visible width */
+
+.polaroid-gallery {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 0 6px 16px; /* extra bottom padding for horizontal scrollbar breathing room */
+  min-height: 105px;
+  position: relative;
+  z-index: 2;
+  width: max-content; /* Ensure the flex container expands to fit all children */
+  min-width: 100%; /* At least full width */
+}
+
+.polaroid-gallery::before {
+  content: '';
   position: absolute;
   top: 18px;
   left: 0;
@@ -580,17 +596,12 @@ body {
   height: 2px;
   background: linear-gradient(90deg, #CBD5E1 0%, #94A3B8 50%, #CBD5E1 100%);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-  z-index: 1;
+  z-index: -1; /* Behind polaroids */
 }
 
-.polaroid-gallery {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 0 6px;
-  min-height: 105px;
-  position: relative;
-  z-index: 2;
+.polaroid-gallery.empty-gallery::before {
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .polaroid-item {
@@ -1276,7 +1287,7 @@ body {
 /* Love Days & Trip Countdown Banner */
 .love-widget-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin: 20px 0 28px;
 }

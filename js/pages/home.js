@@ -11,12 +11,12 @@ export function renderHome(container) {
 
   // Calculate Love Days
   const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
   const anni = new Date(settings.anniversaryDate || '2024-01-01');
   const diffTime = today - anni;
   const loveDays = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
 
   // Calculate Upcoming Trip Countdown
-  const todayStr = today.toISOString().split('T')[0];
   const upcomingTrips = trips
     .filter(t => t.startDate && t.startDate >= todayStr)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
@@ -31,6 +31,37 @@ export function renderHome(container) {
     countdownSub = `✈️ ${nextTrip.name} (${formatDate(nextTrip.startDate)})`;
   }
 
+  // Calculate Days Apart
+  let daysApartText = 'Chưa có chuyến đi nào';
+  let daysApartSub = 'Hãy lên lịch trình nhé!';
+  
+  const isCurrentlyOnTrip = trips.some(t => t.startDate <= todayStr && t.endDate >= todayStr);
+
+  if (isCurrentlyOnTrip) {
+    daysApartText = 'Đang bên nhau 🥰';
+    daysApartSub = 'Tận hưởng khoảnh khắc này!';
+  } else {
+    const pastTrips = trips
+      .filter(t => t.endDate < todayStr)
+      .sort((a, b) => b.endDate.localeCompare(a.endDate));
+      
+    if (pastTrips.length > 0) {
+      const lastTrip = pastTrips[0];
+      const todayDate = new Date(todayStr);
+      const lastTripDate = new Date(lastTrip.endDate);
+      const diffApart = todayDate - lastTripDate;
+      const daysApart = Math.floor(diffApart / (1000 * 60 * 60 * 24));
+      
+      if (daysApart === 0) {
+        daysApartText = 'Vừa gặp nhau hôm nay 🥰';
+        daysApartSub = 'Chưa xa ngày nào';
+      } else {
+        daysApartText = `${daysApart} <small>ngày</small>`;
+        daysApartSub = `Kể từ: ${lastTrip.name}`;
+      }
+    }
+  }
+
   container.innerHTML = `
     <div class="app-header">
       <h1>${settings.coupleTitle || 'Lynsey & Vak Trip 😋'}</h1>
@@ -43,16 +74,25 @@ export function renderHome(container) {
       </div>
     </div>
 
-    <!-- Love Days & Countdown Banner -->
+    <!-- Love Days, Days Apart & Countdown Banner -->
     <div class="love-widget-container slide-up">
       <div class="love-card">
         <div class="love-card-icon">💖</div>
         <div class="love-card-body">
-          <div class="love-card-title">TOGETHER</div>
+          <div class="love-card-title">BÊN NHAU ĐƯỢC</div>
           <div class="love-card-val">${loveDays} <small>ngày</small></div>
           <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-top:2px;">Kỷ niệm: ${formatDate(settings.anniversaryDate)}</div>
         </div>
         <button class="btn-icon btn-sm love-card-edit-btn" id="btn-edit-settings" title="Chỉnh ngày kỷ niệm">⚙️</button>
+      </div>
+
+      <div class="love-card">
+        <div class="love-card-icon">🥺</div>
+        <div class="love-card-body">
+          <div class="love-card-title">XA NHAU ĐƯỢC</div>
+          <div class="love-card-val">${daysApartText}</div>
+          <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-top:2px;">${daysApartSub}</div>
+        </div>
       </div>
 
       <div class="love-card">
@@ -214,15 +254,20 @@ export function renderHome(container) {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-id');
-        showConfirm({
-          message: 'Bạn có chắc chắn muốn xóa chuyến đi này?',
-          onConfirm: async () => {
-            await TripStore.delete(id);
-            await MediaStore.deleteByPrefix('blob_' + id);
-            renderHome(container);
-            showToast('Đã xóa chuyến đi');
-          }
-        });
+        const pass = prompt('Vui lòng nhập mật khẩu để xóa chuyến đi này:');
+        if (pass === '2503') {
+          showConfirm({
+            message: 'Bạn có chắc chắn muốn xóa chuyến đi này?',
+            onConfirm: async () => {
+              await TripStore.delete(id);
+              await MediaStore.deleteByPrefix('blob_' + id);
+              renderHome(container);
+              showToast('Đã xóa chuyến đi');
+            }
+          });
+        } else if (pass !== null) {
+          showToast('Mật khẩu không đúng!', 'error');
+        }
       });
     });
   }
