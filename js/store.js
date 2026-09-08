@@ -333,29 +333,8 @@ export function subscribeToRealtimeUpdates(onUpdateCallback) {
     console.error("Wheel realtime error:", err);
   });
 
-  // Listen to Media
-  onSnapshot(collection(db, "media"), (snapshot) => {
-    snapshot.forEach(async (docSnap) => {
-      const { key, type, data } = docSnap.data();
-      if (key && data) {
-        try {
-          const blob = base64ToBlob(data, type);
-          await MediaStore.init();
-          const existing = await MediaStore.get(key);
-          if (!existing) {
-            // Save to local IndexedDB
-            const transaction = dbInstance.transaction([STORE_NAME], 'readwrite');
-            transaction.objectStore(STORE_NAME).put(blob, key);
-          }
-        } catch (e) {
-          console.error("Error saving synced media:", e);
-        }
-      }
-    });
-    if (onUpdateCallback) onUpdateCallback('media');
-  }, (err) => {
-    console.error("Media realtime error:", err);
-  });
+  // Chú ý: Đã loại bỏ onSnapshot cho collection("media") để tối ưu tốc độ tải.
+  // Hình ảnh giờ sẽ được tải lười (lazy load) khi cần thiết qua MediaStore.get().
 }
 
 // --- Helpers ---
