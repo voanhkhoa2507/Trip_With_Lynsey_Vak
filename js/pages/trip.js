@@ -1040,7 +1040,7 @@ function openBoardingPassModal(trip) {
           </div>
           <div class="bp-barcode-section">
             <div class="bp-barcode">||| | |||| | || |||| | |||</div>
-            <div class="bp-footer-quote">"Cùng em đi khắp thế gian 💕"</div>
+            <div class="bp-footer-quote">"💕"</div>
           </div>
         </div>
 
