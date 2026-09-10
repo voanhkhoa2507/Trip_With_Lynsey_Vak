@@ -26,9 +26,15 @@ export function renderTrip(container, tripId) {
   trip.days = trip.days || [];
   trip.receipts = trip.receipts || [];
   trip.media = trip.media || [];
-  trip.penalties = trip.penalties || { bungTran: 0, troiTay: 0, k: 0 };
-  if (trip.penalties.troiTay === undefined && trip.penalties.cuDau !== undefined) {
-    trip.penalties.troiTay = trip.penalties.cuDau;
+  
+  // Migrate old penalty object format to dynamic array
+  if (!Array.isArray(trip.penalties)) {
+    const old = trip.penalties || {};
+    trip.penalties = [
+      { id: 'p1', label: '🖐️ Búng trán', count: old.bungTran || 0 },
+      { id: 'p2', label: '🔗 Trói tay', count: old.troiTay !== undefined ? old.troiTay : (old.cuDau || 0) },
+      { id: 'p3', label: '🤔 K', count: old.k || 0 }
+    ];
   }
 
   clearUrls();
@@ -44,15 +50,17 @@ export function renderTrip(container, tripId) {
   const handleNoteChange = debounce((e) => {
     trip.note = e.target.value;
     TripStore.save(trip);
-  }, 500);
+  }, 2000); // Tăng delay lên 2 giây
 
   const handlePenaltyChange = debounce((e) => {
-    const key = e.target.getAttribute('data-key');
+    const id = e.target.getAttribute('data-id');
     const val = parseInt(e.target.value, 10);
-    trip.penalties = trip.penalties || { bungTran: 0, troiTay: 0, k: 0 };
-    trip.penalties[key] = isNaN(val) ? 0 : val;
-    TripStore.save(trip);
-  }, 300);
+    const penalty = trip.penalties.find(p => p.id === id);
+    if (penalty) {
+      penalty.count = isNaN(val) ? 0 : val;
+      TripStore.save(trip);
+    }
+  }, 2000); // Tăng delay lên 2 giây
 
   container.innerHTML = `
     <div class="page-header flex-between">
@@ -73,20 +81,20 @@ export function renderTrip(container, tripId) {
       </div>
 
       <div class="penalty-card clay-card">
-        <div class="penalty-card-header">⚡ Phạt</div>
+        <div class="penalty-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>⚡ Phạt</span>
+          <button class="btn btn-sm btn-secondary" id="btn-add-penalty" style="padding: 2px 8px; font-size: 0.8rem;">+ Thêm</button>
+        </div>
         <div class="penalty-list">
-          <div class="penalty-item">
-            <span class="penalty-label">🖐️ Búng trán</span>
-            <input type="number" min="0" class="penalty-input" data-key="bungTran" value="${trip.penalties?.bungTran ?? 0}">
-          </div>
-          <div class="penalty-item">
-            <span class="penalty-label">🔗 Trói tay</span>
-            <input type="number" min="0" class="penalty-input" data-key="troiTay" value="${trip.penalties?.troiTay ?? trip.penalties?.cuDau ?? 0}">
-          </div>
-          <div class="penalty-item">
-            <span class="penalty-label">🤔 K</span>
-            <input type="number" min="0" class="penalty-input" data-key="k" value="${trip.penalties?.k ?? 0}">
-          </div>
+          ${trip.penalties.map(p => `
+            <div class="penalty-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+              <span class="penalty-label">${p.label}</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="number" min="0" class="penalty-input" data-id="${p.id}" value="${p.count}" style="width:60px;">
+                <button class="btn-icon btn-sm btn-del-penalty" data-id="${p.id}" style="width:24px; height:24px; font-size:12px;" title="Xóa">🗑️</button>
+              </div>
+            </div>
+          `).join('')}
         </div>
       </div>
     </div>
@@ -106,6 +114,31 @@ export function renderTrip(container, tripId) {
   container.querySelectorAll('.penalty-input').forEach(input => {
     input.addEventListener('input', handlePenaltyChange);
     input.addEventListener('change', handlePenaltyChange);
+  });
+
+  const btnAddPenalty = container.querySelector('#btn-add-penalty');
+  if (btnAddPenalty) {
+    btnAddPenalty.addEventListener('click', () => {
+      const label = prompt('Nhập tên hình phạt mới (Ví dụ: 🍻 Nhậu, 🎤 Hát):');
+      if (label && label.trim()) {
+        const newId = 'p' + Date.now();
+        trip.penalties.push({ id: newId, label: label.trim(), count: 0 });
+        TripStore.save(trip);
+      }
+    });
+  }
+
+  container.querySelectorAll('.btn-del-penalty').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      showConfirm({
+        message: 'Bạn có chắc muốn xóa hình phạt này?',
+        onConfirm: () => {
+          trip.penalties = trip.penalties.filter(p => p.id !== id);
+          TripStore.save(trip);
+        }
+      });
+    });
   });
 
   container.querySelector('#btn-boarding-pass')?.addEventListener('click', () => {
