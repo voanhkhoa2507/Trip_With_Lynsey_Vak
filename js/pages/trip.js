@@ -26,7 +26,7 @@ export function renderTrip(container, tripId) {
   trip.days = trip.days || [];
   trip.receipts = trip.receipts || [];
   trip.media = trip.media || [];
-  
+
   // Migrate old penalty object format to dynamic array
   if (!Array.isArray(trip.penalties)) {
     const old = trip.penalties || {};
@@ -70,11 +70,11 @@ export function renderTrip(container, tripId) {
 
   if (trip.endDate && trip.endDate < todayStr) {
     statusText = 'Đã kết thúc';
-    statusSub = 'Kỷ niệm tuyệt vời!';
+    statusSub = '';
     statusIcon = '✅';
   } else if (trip.startDate && trip.startDate <= todayStr && (!trip.endDate || trip.endDate >= todayStr)) {
     statusText = 'Đang diễn ra 🥰';
-    statusSub = 'Tận hưởng chuyến đi!';
+    statusSub = '';
     statusIcon = '🎉';
   } else if (trip.startDate && trip.startDate > todayStr) {
     const tripStart = new Date(trip.startDate);
