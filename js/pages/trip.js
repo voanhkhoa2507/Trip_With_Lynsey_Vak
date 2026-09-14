@@ -62,15 +62,52 @@ export function renderTrip(container, tripId) {
     }
   }, 2000); // Tăng delay lên 2 giây
 
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  let statusText = 'Chưa có lịch';
+  let statusSub = 'Hãy cập nhật ngày đi';
+  let statusIcon = '📅';
+
+  if (trip.endDate && trip.endDate < todayStr) {
+    statusText = 'Đã kết thúc';
+    statusSub = 'Kỷ niệm tuyệt vời!';
+    statusIcon = '✅';
+  } else if (trip.startDate && trip.startDate <= todayStr && (!trip.endDate || trip.endDate >= todayStr)) {
+    statusText = 'Đang diễn ra 🥰';
+    statusSub = 'Tận hưởng chuyến đi!';
+    statusIcon = '🎉';
+  } else if (trip.startDate && trip.startDate > todayStr) {
+    const tripStart = new Date(trip.startDate);
+    const daysLeft = Math.max(0, Math.ceil((tripStart - today) / (1000 * 60 * 60 * 24)));
+    statusText = `${daysLeft} <small>ngày nữa</small>`;
+    statusSub = `Bắt đầu: ${formatDate(trip.startDate)}`;
+    statusIcon = '✈️';
+  }
+
   container.innerHTML = `
-    <div class="page-header flex-between">
-      <div style="display:flex; align-items:center; gap:8px;">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+      <div style="display:flex; align-items:center; gap:12px;">
         <button class="back-btn btn-icon" onclick="window.location.hash='#/'">←</button>
-        <h2 class="page-title">${trip.name}</h2>
+        <div>
+          <h2 class="page-title" style="margin-bottom: 4px; font-size: 1.5rem;">${trip.name}</h2>
+          <span class="badge badge-primary">${trip.destination || 'N/A'}</span>
+        </div>
       </div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button class="btn btn-secondary btn-sm" id="btn-boarding-pass" style="box-shadow:var(--shadow-clay);">🎫 Vé kỷ niệm</button>
-        <span class="badge badge-primary">${trip.destination || 'N/A'}</span>
+      
+      <div style="display:flex; align-items:stretch; gap:12px; flex-wrap: wrap;">
+        <div class="love-card" style="padding: 10px 16px; min-width: 200px; margin: 0; flex: 1;">
+          <div class="love-card-icon" style="width:40px; height:40px; font-size:1.2rem;">${statusIcon}</div>
+          <div class="love-card-body">
+            <div class="love-card-title" style="font-size: 0.7rem;">TRẠNG THÁI</div>
+            <div class="love-card-val" style="font-size: 1.1rem;">${statusText}</div>
+            <div style="font-size:0.7rem; color:var(--color-text-secondary); margin-top:2px;">${statusSub}</div>
+          </div>
+        </div>
+        
+        <button class="btn btn-secondary btn-sm" id="btn-boarding-pass" style="box-shadow:var(--shadow-clay); display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 0 16px;">
+          <span style="font-size:1.2rem; margin-bottom:4px;">🎫</span>
+          <span>Vé kỷ niệm</span>
+        </button>
       </div>
     </div>
 
